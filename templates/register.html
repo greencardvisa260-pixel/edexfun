@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdexFun – Create Account</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root, [data-theme="dark"] {
+            --bg: #0f0e17; --surface: #1a1a2e; --accent: #ff6b35; --yellow: #ffe347;
+            --teal: #00d4aa; --text: #fffffe; --text-muted: #a7a9be;
+            --border: rgba(255,255,255,0.08);
+            --font-display: 'Boogaloo', cursive; --font-body: 'Nunito', sans-serif;
+        }
+        [data-theme="light"] {
+            --bg: #f5f5f0; --surface: #ffffff; --accent: #e85d1a; --yellow: #c8960c;
+            --teal: #008f73; --text: #1a1a2e; --text-muted: #5a5c72;
+            --border: rgba(0,0,0,0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: var(--font-body); min-height: 100vh;
+            display: flex; align-items: center; justify-content: center; padding: 2rem;
+            background-image:
+                radial-gradient(ellipse at 80% 10%, rgba(0,212,170,0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 20% 90%, rgba(255,107,53,0.15) 0%, transparent 50%);
+        }
+        .wrap { width: 100%; max-width: 500px; }
+        .logo { font-family: var(--font-display); font-size: 2.5rem; text-align: center; color: var(--accent); margin-bottom: 0.25rem; }
+        .logo span { color: var(--yellow); }
+        .tagline { text-align: center; color: var(--text-muted); margin-bottom: 2rem; font-weight: 600; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; }
+        h2 { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .form-group { margin-bottom: 1.1rem; }
+        label { display: block; font-weight: 700; font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.35rem; }
+        input {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            border-radius: 10px; padding: 0.65rem 1rem; color: var(--text);
+            font-family: var(--font-body); font-size: 0.95rem; transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--teal); background: rgba(0,212,170,0.05); }
+        .btn {
+            width: 100%; padding: 0.8rem;
+            background: var(--teal); color: #0f0e17;
+            border: none; border-radius: 12px;
+            font-family: var(--font-body); font-size: 1rem; font-weight: 800;
+            cursor: pointer; margin-top: 0.5rem; transition: all 0.2s;
+        }
+        .btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+        .error-list { background: rgba(255,77,158,0.12); border: 1px solid rgba(255,77,158,0.3); border-radius: 10px; padding: 0.75rem 1rem; color: #ff4d9e; font-size: 0.88rem; margin-bottom: 1rem; }
+        .error-list p { margin: 0.2rem 0; }
+        .footer-link { text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .footer-link a { color: var(--accent); text-decoration: none; font-weight: 700; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="logo">Edex<span>Fun</span> 🎓</div>
+        <p class="tagline" data-i18n="reg_tagline">Create your teacher account</p>
+        {% if success %}
+        <div class="card" style="text-align:center;padding:2.5rem">
+            <div style="font-size:3rem;margin-bottom:1rem">⏳</div>
+            <h2 style="font-family:var(--font-display);font-size:1.6rem;margin-bottom:0.75rem" data-i18n="reg_pending_title">Account Created!</h2>
+            <p style="color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6" data-i18n="reg_pending_sub">Your account is pending admin approval. You'll be able to log in once an administrator approves your account.</p>
+            <a href="/accounts/login/" style="display:inline-block;padding:0.7rem 2rem;background:var(--accent);color:white;border-radius:10px;font-weight:700;text-decoration:none"data-i18n="reg_back_login">← Back to Login</a>
+        </div>
+        {% else %}
+        <div class="card">
+            <h2 data-i18n="reg_title">✨ Join EdexFun</h2>
+            {% if errors %}
+            <div class="error-list">
+                {% for field, errs in errors.items %}<p>{{ field }}: {{ errs|join:", " }}</p>{% endfor %}
+            </div>
+            {% endif %}
+            <form method="post" action="/accounts/register/">
+                {% csrf_token %}
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" name="first_name" value="{{ data.first_name|default:'' }}" placeholder="Jane">
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" name="last_name" value="{{ data.last_name|default:'' }}" placeholder="Smith">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{ data.username|default:'' }}" placeholder="janesmith" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ data.email|default:'' }}" placeholder="jane@school.edu" required>
+                </div>
+                <div class="form-group">
+                    <label>School / Institution</label>
+                    <input type="text" name="school" value="{{ data.school|default:'' }}" placeholder="Westside High School">
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" placeholder="Min 8 chars" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" name="password2" placeholder="Repeat password" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn" data-i18n="reg_btn">Create Account 🎉</button>
+            </form>
+        </div>
+        <p class="footer-link"><span data-i18n="reg_have_acct">Already have an account?</span> <a href="/accounts/login/" data-i18n="reg_sign_in">Sign in →</a></p>
+        {% endif %}
+    </div>
+
+    <script>
+    (function() {
+        const TRANS = {
+            en: { reg_tagline: 'Create your teacher account', reg_title: '✨ Join EdexFun', reg_btn: 'Create Account 🎉', reg_have_acct: 'Already have an account?', reg_sign_in: 'Sign in →', reg_pending_title: 'Account Created!', reg_pending_sub: 'Your account is pending admin approval. You'll be able to log in once an administrator approves your account.', reg_back_login: '← Back to Login' },
+            ru: { reg_tagline: 'Создайте аккаунт учителя', reg_title: '✨ Присоединиться к EdexFun', reg_btn: 'Создать аккаунт 🎉', reg_have_acct: 'Уже есть аккаунт?', reg_sign_in: 'Войти →', reg_pending_title: 'Аккаунт создан!', reg_pending_sub: 'Ваш аккаунт ожидает одобрения администратора.', reg_back_login: '← Назад к входу' }
+        };
+        const lang = localStorage.getItem('bbLang') || 'en';
+        document.documentElement.setAttribute('data-lang', lang);
+        document.documentElement.setAttribute('lang', lang);
+        const theme = localStorage.getItem('bbTheme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                const val = (TRANS[lang] && TRANS[lang][key]) || (TRANS['en'][key]) || key;
+                el.innerHTML = val;
+            });
+        });
+    })();
+    </script>
+</body>
+</html>

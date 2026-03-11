@@ -1,0 +1,521 @@
+{% extends "base.html" %}
+{% block title %}{% if game %}Edit{% else %}New{% endif %} Game – EdexFun{% endblock %}
+
+{% block extra_styles %}
+.editor-layout { display: grid; grid-template-columns: 380px 1fr; gap: 1.5rem; padding: 2rem 0; }
+@media(max-width: 900px) { .editor-layout { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+.panel h2 { font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.tab-bar { display: flex; gap: 0.25rem; margin-bottom: 1.5rem; background: rgba(0,0,0,0.3); border-radius: 10px; padding: 4px; }
+.tab {
+    flex: 1; padding: 0.5rem; border: none; background: transparent;
+    color: var(--text-muted); font-family: var(--font-body); font-weight: 700;
+    font-size: 0.85rem; border-radius: 8px; cursor: pointer; transition: all 0.2s;
+}
+.tab.active { background: var(--accent); color: white; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.question-list { display: flex; flex-direction: column; gap: 0.5rem; max-height: 500px; overflow-y: auto; }
+.question-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.75rem 1rem; cursor: pointer;
+    transition: all 0.15s;
+}
+.question-item:hover { border-color: var(--accent); background: rgba(255,107,53,0.05); }
+.question-item.active { border-color: var(--accent); background: rgba(255,107,53,0.1); }
+.tile-num {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 1rem; flex-shrink: 0;
+}
+.q-preview { font-size: 0.85rem; color: var(--text-muted); truncate: ellipsis; overflow: hidden; white-space: nowrap; max-width: 200px; }
+.special-chip {
+    margin-left: auto; font-size: 0.7rem; padding: 0.2rem 0.5rem;
+    border-radius: 5px; font-weight: 700; white-space: nowrap;
+}
+.special-double { background: rgba(255,227,71,0.2); color: var(--yellow); }
+.special-steal { background: rgba(76,201,240,0.2); color: var(--blue); }
+.special-bomb { background: rgba(255,77,158,0.2); color: var(--pink); }
+.special-swap { background: rgba(155,93,229,0.2); color: var(--purple); }
+/* Grid preview */
+.grid-preview {
+    display: grid; gap: 6px;
+    background: rgba(0,0,0,0.3); border-radius: 12px; padding: 1rem;
+}
+.grid-tile {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 1.1rem;
+    cursor: pointer; transition: all 0.15s;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    position: relative;
+}
+.grid-tile:hover { border-color: var(--accent); background: rgba(255,107,53,0.15); }
+.grid-tile.has-question { background: rgba(0,212,170,0.12); border-color: var(--teal); color: var(--teal); }
+.grid-tile.has-special-double { background: rgba(255,227,71,0.12); border-color: var(--yellow); }
+.grid-tile.has-special-steal { background: rgba(76,201,240,0.12); border-color: var(--blue); }
+.grid-tile.has-special-bomb { background: rgba(255,77,158,0.12); border-color: var(--pink); }
+.grid-tile.has-special-swap { background: rgba(155,93,229,0.12); border-color: var(--purple); }
+/* CSV upload area */
+.upload-area {
+    border: 2px dashed var(--border); border-radius: 12px;
+    padding: 2.5rem 1.5rem; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+}
+.upload-area:hover, .upload-area.drag-over { border-color: var(--accent); background: rgba(255,107,53,0.05); }
+.upload-area .icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+.upload-area h3 { font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 0.5rem; }
+.upload-area p { color: var(--text-muted); font-size: 0.88rem; }
+.progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 1rem; display: none; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--accent)); border-radius: 3px; transition: width 0.3s; }
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="padding-top:1.5rem;display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">
+        <a href="/dashboard/" class="btn btn-secondary btn-sm" data-i18n="ed_back">← Main</a>
+        <h1 style="font-family:var(--font-display);font-size:1.6rem">
+            {% if game %}✏️ Edit: {{ game.title }}{% else %}🎲 Create New Game{% endif %}
+        </h1>
+    </div>
+
+    <div class="editor-layout">
+        <!-- LEFT: Settings + CSV -->
+        <div>
+            <div class="panel" style="margin-bottom:1rem">
+                <h2 data-i18n="ed_game_settings">⚙️ Game Settings</h2>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="ed_game_title">Game Title *</label>
+                    <input type="text" class="form-control" id="gameTitle" data-i18n-ph="ed_game_title_ph" value="{{ game.title|default:'' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" data-i18n="ed_description">Description</label>
+                    <textarea class="form-control" id="gameDesc" rows="2" data-i18n-ph="ed_desc_ph">{{ game.description|default:'' }}</textarea>
+                </div>
+                <div class="options-grid">
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_grid">Grid Size</label>
+                        <select class="form-control" id="gridSize" onchange="updateGridPreview()">
+                            <option value="3" {% if game.grid_size == 3 %}selected{% endif %}>3×3 (9 tiles)</option>
+                            <option value="4" {% if not game or game.grid_size == 4 %}selected{% endif %}>4×4 (16 tiles)</option>
+                            <option value="5" {% if game.grid_size == 5 %}selected{% endif %}>5×5 (25 tiles)</option>
+                            <option value="6" {% if game.grid_size == 6 %}selected{% endif %}>6×6 (36 tiles)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_visibility">Visibility</label>
+                        <select class="form-control" id="gameVisibility">
+                            <option value="private" {% if not game or game.visibility == 'private' %}selected{% endif %} data-i18n="ed_vis_private">🔒 Private</option>
+                            <option value="public" {% if game.visibility == 'public' %}selected{% endif %} data-i18n="ed_vis_public">🌍 Public</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_subject">Subject</label>
+                        <input type="text" class="form-control" id="gameSubject" data-i18n-ph="ed_subject_ph" value="{{ game.subject|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_grade">Grade Level</label>
+                        <input type="text" class="form-control" id="gameGrade" data-i18n-ph="ed_grade_ph" value="{{ game.grade_level|default:'' }}">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="ed_cover_label">🖼 Cover Image URL</label>
+                        <input type="url" class="form-control" id="gameCoverImage" value="{{ game.cover_image_url|default:'' }}" oninput="updateCoverPreview()">
+                        <div id="coverPreviewWrap" style="margin-top:0.65rem;display:{% if game.cover_image_url %}block{% else %}none{% endif %}">
+                            <img id="coverPreview" src="{{ game.cover_image_url|default:'' }}" alt="cover" style="width:100%;max-height:140px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+                        </div>
+                        <p style="color:var(--text-muted);font-size:0.78rem;margin-top:0.3rem">Get free lightweight images from <a href="https://tenor.com" target="_blank" style="color:var(--teal)">Tenor</a>, <a href="https://giphy.com" target="_blank" style="color:var(--teal)">Giphy</a>, <a href="https://pixabay.com" target="_blank" style="color:var(--teal)">Pixabay</a></p>
+                    </div>
+                    <div class="form-group" style="display:none"></div>
+                </div>
+                <button class="btn btn-primary" style="width:100%" onclick="saveGame()" data-i18n="ed_save">💾 Save Game</button>
+            </div>
+
+            <!-- CSV Upload -->
+            <div class="panel">
+                <h2 data-i18n="ed_csv_title">📂 Upload Questions via CSV</h2>
+                <div style="margin-bottom:1rem">
+                    <a href="/api/games/csv-template/" class="btn btn-secondary btn-sm" id="templateLink" data-i18n="ed_download_csv">⬇ Download CSV Template</a>
+                </div>
+                <div class="upload-area" id="uploadArea" onclick="document.getElementById('csvFile').click()">
+                    <div class="icon">📄</div>
+                    <h3 data-i18n="ed_csv_drop">Drop your CSV here</h3>
+                    <p data-i18n="ed_csv_sub">or click to browse · Supports all question types</p>
+                    <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCsvUpload(this.files[0])">
+                </div>
+                <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+                <div id="uploadResult" style="margin-top:1rem"></div>
+                <div style="margin-top:1.25rem;padding:1rem;background:rgba(0,0,0,0.2);border-radius:10px">
+                    <p style="font-size:0.8rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem">CSV Column Guide</p>
+                    <div style="font-size:0.78rem;color:var(--text-muted);line-height:1.8">
+                        <code style="color:var(--teal)">tile_number</code> · <code style="color:var(--teal)">question_type</code> (multiple_choice / true_false / text)<br>
+                        <code style="color:var(--teal)">question</code> · <code style="color:var(--teal)">correct_answer</code><br>
+                        <code style="color:var(--yellow)">option_a</code> <code style="color:var(--yellow)">option_b</code> <code style="color:var(--yellow)">option_c</code> <code style="color:var(--yellow)">option_d</code><br>
+                        <code style="color:var(--pink)">points</code> · <code style="color:var(--pink)">special</code> (none/double_points/steal/bomb/swap)<br>
+                        <code style="color:var(--text-muted)">time_limit</code> · <code style="color:var(--text-muted)">hint</code> · <code style="color:var(--text-muted)">image_url</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Grid preview + Question editor -->
+        <div>
+            <div class="panel" style="margin-bottom:1rem">
+                <h2 data-i18n="ed_grid_preview">🗺️ Grid Preview</h2>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem" data-i18n="ed_grid_sub">Click a tile to add or edit its question manually.</p>
+                <div class="grid-preview" id="gridPreview"></div>
+            </div>
+
+            <!-- Question Editor -->
+            <div class="panel" id="questionEditorPanel" style="display:none">
+                <h2><span data-i18n="ed_q_editor">✍️ Tile</span> <span id="editingTileNum">1</span> <span data-i18n="ed_q_editor_sub">– Question Editor</span></h2>
+                <div class="tab-bar">
+                    <button class="tab active" onclick="switchTab('details')" data-i18n="ed_tab_q">Question</button>
+                    <button class="tab" onclick="switchTab('answer')" data-i18n="ed_tab_ans">Answer</button>
+                    <button class="tab" onclick="switchTab('settings')" data-i18n="ed_tab_set">Settings</button>
+                </div>
+                <!-- Details tab -->
+                <div class="tab-content active" id="tab-details">
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_type">Question Type</label>
+                        <select class="form-control" id="qType" onchange="updateAnswerFields()">
+                            <option value="text" data-i18n="ed_type_text">📝 Text Q&A</option>
+                            <option value="multiple_choice" data-i18n="ed_type_mc">🔤 Multiple Choice</option>
+                            <option value="true_false" data-i18n="ed_type_tf">✅ True / False</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_question">Question Text *</label>
+                        <textarea class="form-control" id="qText" rows="3" data-i18n-ph="ed_q_ph"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_image">🖼 Image URL (optional)</label>
+                        <input type="url" class="form-control" id="qImageUrl" data-i18n-ph="ed_image_ph" oninput="previewImage(this.value)">
+                        <div id="imagePreviewWrap" style="display:none;margin-top:0.75rem;position:relative">
+                            <img id="imagePreview"
+                                 style="width:100%;max-height:180px;object-fit:cover;border-radius:10px;border:1px solid var(--border)">
+                            <button onclick="clearImage()" title="Remove image"
+                                style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);
+                                       border:none;color:white;border-radius:50%;width:26px;height:26px;
+                                       cursor:pointer;font-size:0.9rem;line-height:1">✕</button>
+                        </div>
+                        <p id="imageError" style="display:none;color:var(--pink);font-size:0.8rem;margin-top:0.4rem">
+                            ⚠️ Could not load image — check the URL
+                        </p>
+                    </div>
+                </div>
+                <!-- Answer tab -->
+                <div class="tab-content" id="tab-answer">
+                    <div id="answerFields"></div>
+                </div>
+                <!-- Settings tab -->
+                <div class="tab-content" id="tab-settings">
+                    <div class="options-grid">
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="ed_points">Points</label>
+                            <input type="number" class="form-control" id="qPoints" value="100" min="10" step="10">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" data-i18n="ed_time">Time Limit (sec)</label>
+                            <input type="number" class="form-control" id="qTime" value="30" min="5" max="120">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_special">⚡ Special Tile</label>
+                        <select class="form-control" id="qSpecial">
+                            <option value="none" data-i18n="ed_sp_none">None</option>
+                            <option value="double_points" data-i18n="ed_sp_double">🌟 Double Points</option>
+                            <option value="steal" data-i18n="ed_sp_steal">💸 Steal Points</option>
+                            <option value="bomb" data-i18n="ed_sp_bomb">💣 Bomb (remove opponent points)</option>
+                            <option value="swap" data-i18n="ed_sp_swap">🔀 Swap Scores</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" data-i18n="ed_hint">Hint (optional)</label>
+                        <input type="text" class="form-control" id="qHint" data-i18n-ph="ed_hint_ph">
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:1rem">
+                    <button class="btn btn-teal" style="flex:1" onclick="saveQuestion()" data-i18n="ed_save_q">💾 Save Question</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteQuestion()" data-i18n="ed_delete_q">🗑 Delete</button>
+                </div>
+            </div>
+
+            <!-- Question list -->
+            <div class="panel">
+                <h2>📋 Questions (<span id="qCount">0</span>/<span id="qMax">0</span>)</h2>
+                <div class="question-list" id="questionList">
+                    <div style="color:var(--text-muted);text-align:center;padding:2rem">Save your game first, then add questions.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let gameId = {{ game.id|default:"null" }};
+let questions = {};
+let currentTile = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+    updateGridPreview();
+    if (gameId) loadQuestions();
+
+    // Drag and drop for CSV
+    const area = document.getElementById('uploadArea');
+    area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('drag-over'); });
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+    area.addEventListener('drop', e => {
+        e.preventDefault(); area.classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if (f) handleCsvUpload(f);
+    });
+});
+
+function updateGridPreview() {
+    const size = parseInt(document.getElementById('gridSize').value);
+    const grid = document.getElementById('gridPreview');
+    grid.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    document.getElementById('qMax').textContent = size * size;
+    grid.innerHTML = '';
+    for (let i = 1; i <= size * size; i++) {
+        const q = questions[i];
+        let cls = 'grid-tile';
+        if (q) {
+            cls += ' has-question';
+            if (q.special === 'double_points') cls += ' has-special-double';
+            if (q.special === 'steal') cls += ' has-special-steal';
+            if (q.special === 'bomb') cls += ' has-special-bomb';
+            if (q.special === 'swap') cls += ' has-special-swap';
+        }
+        grid.innerHTML += `<div class="${cls}" onclick="selectTile(${i})" title="Tile ${i}${q ? ': ' + q.question_text.substring(0,30) : ' (empty)'}">${i}${q && q.special !== 'none' ? '<br><span style="font-size:0.6rem">' + specialIcon(q.special) + '</span>' : ''}</div>`;
+    }
+}
+
+function specialIcon(s) {
+    return {double_points:'🌟', steal:'💸', bomb:'💣', swap:'🔀'}[s] || '';
+}
+
+function selectTile(num) {
+    if (!gameId) { showToast('Save game settings first!', 'error'); return; }
+    currentTile = num;
+    document.getElementById('editingTileNum').textContent = num;
+    document.getElementById('questionEditorPanel').style.display = 'block';
+    const q = questions[num];
+    document.getElementById('qType').value = q?.question_type || 'text';
+    document.getElementById('qText').value = q?.question_text || '';
+    const imgUrl = q?.image_src || '';
+    document.getElementById('qImageUrl').value = imgUrl;
+    previewImage(imgUrl);
+    document.getElementById('qPoints').value = q?.points || 100;
+    document.getElementById('qTime').value = q?.time_limit || 30;
+    document.getElementById('qSpecial').value = q?.special || 'none';
+    document.getElementById('qHint').value = q?.hint || '';
+    updateAnswerFields(q);
+    switchTab('details');
+    document.getElementById('questionEditorPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['details','answer','settings'][i] === tab));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+}
+
+function updateAnswerFields(q) {
+    const type = document.getElementById('qType').value;
+    const container = document.getElementById('answerFields');
+    if (type === 'multiple_choice') {
+        container.innerHTML = `
+            <div class="form-group"><label class="form-label">✅ ${t('ed_correct_ans')} (must match one option)</label>
+                <input class="form-control" id="qCorrect" value="${q?.correct_answer||''}" placeholder="e.g. Paris"></div>
+            <div class="options-grid">
+                <div class="form-group"><label class="form-label">${t('ed_opt_a')}</label><input class="form-control" id="qOptA" value="${q?.option_a||''}"></div>
+                <div class="form-group"><label class="form-label">${t('ed_opt_b')}</label><input class="form-control" id="qOptB" value="${q?.option_b||''}"></div>
+                <div class="form-group"><label class="form-label">${t('ed_opt_c')}</label><input class="form-control" id="qOptC" value="${q?.option_c||''}"></div>
+                <div class="form-group"><label class="form-label">${t('ed_opt_d')}</label><input class="form-control" id="qOptD" value="${q?.option_d||''}"></div>
+            </div>`;
+    } else if (type === 'true_false') {
+        container.innerHTML = `<div class="form-group"><label class="form-label">${t('ed_correct_ans')}</label>
+            <select class="form-control" id="qCorrect">
+                <option value="True" ${q?.correct_answer==='True'?'selected':''}>✅ ${t('play_tf_true')}</option>
+                <option value="False" ${q?.correct_answer==='False'?'selected':''}>❌ ${t('play_tf_false')}</option>
+            </select></div>`;
+    } else {
+        container.innerHTML = `<div class="form-group"><label class="form-label">✅ ${t('ed_correct_ans')}</label>
+            <input class="form-control" id="qCorrect" value="${q?.correct_answer||''}" placeholder="Expected answer"></div>`;
+    }
+}
+
+async function saveGame() {
+    const title = document.getElementById('gameTitle').value.trim();
+    if (!title) { showToast('Game title is required', 'error'); return; }
+    const payload = {
+        title, description: document.getElementById('gameDesc').value,
+        grid_size: parseInt(document.getElementById('gridSize').value),
+        visibility: document.getElementById('gameVisibility').value,
+        subject: document.getElementById('gameSubject').value,
+        grade_level: document.getElementById('gameGrade').value,
+        cover_image_url: document.getElementById('gameCoverImage').value.trim(),
+    };
+    try {
+        let data;
+        if (gameId) {
+            data = await apiFetch(`/api/games/${gameId}/`, { method: 'PATCH', body: JSON.stringify(payload) });
+        } else {
+            data = await apiFetch('/api/games/', { method: 'POST', body: JSON.stringify(payload) });
+            gameId = data.id;
+            window.history.replaceState({}, '', `/game/${gameId}/edit/`);
+        }
+        showToast('Game saved! ✨');
+        updateGridPreview();
+        loadQuestions();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function saveQuestion() {
+    if (!currentTile) return;
+    const qType = document.getElementById('qType').value;
+    const payload = {
+        tile_number: currentTile,
+        question_type: qType,
+        question_text: document.getElementById('qText').value.trim(),
+        correct_answer: document.getElementById('qCorrect')?.value || '',
+        points: parseInt(document.getElementById('qPoints').value),
+        time_limit: parseInt(document.getElementById('qTime').value),
+        special: document.getElementById('qSpecial').value,
+        hint: document.getElementById('qHint').value,
+        image_url: document.getElementById('qImageUrl').value,
+        option_a: document.getElementById('qOptA')?.value || '',
+        option_b: document.getElementById('qOptB')?.value || '',
+        option_c: document.getElementById('qOptC')?.value || '',
+        option_d: document.getElementById('qOptD')?.value || '',
+    };
+    if (!payload.question_text) { showToast('Question text is required', 'error'); return; }
+    try {
+        const existing = questions[currentTile];
+        if (existing) {
+            await apiFetch(`/api/games/questions/${existing.id}/`, { method: 'PUT', body: JSON.stringify(payload) });
+        } else {
+            await apiFetch(`/api/games/${gameId}/questions/`, { method: 'POST', body: JSON.stringify(payload) });
+        }
+        showToast(`Tile ${currentTile} saved!`);
+        loadQuestions();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function deleteQuestion() {
+    if (!currentTile || !questions[currentTile]) return;
+    if (!confirm('Delete this question?')) return;
+    try {
+        await apiFetch(`/api/games/questions/${questions[currentTile].id}/`, { method: 'DELETE' });
+        showToast('Question deleted');
+        document.getElementById('questionEditorPanel').style.display = 'none';
+        loadQuestions();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function loadQuestions() {
+    if (!gameId) return;
+    try {
+        const data = await apiFetch(`/api/games/${gameId}/`);
+        questions = {};
+        data.questions.forEach(q => questions[q.tile_number] = q);
+        document.getElementById('qCount').textContent = data.questions.length;
+        updateGridPreview();
+        renderQuestionList(data.questions);
+    } catch(e) { console.error(e); }
+}
+
+function renderQuestionList(qs) {
+    const list = document.getElementById('questionList');
+    if (!qs.length) { list.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:1.5rem">No questions yet. Click a tile or upload CSV.</div>'; return; }
+    list.innerHTML = qs.map(q => `
+        <div class="question-item ${currentTile === q.tile_number ? 'active' : ''}" onclick="selectTile(${q.tile_number})">
+            <div class="tile-num">${q.tile_number}</div>
+            <div>
+                <div style="font-size:0.85rem;font-weight:600">${q.question_text.substring(0,50)}${q.question_text.length>50?'…':''}</div>
+                <div class="q-preview">${q.question_type.replace('_',' ')} · ${q.points}pts</div>
+            </div>
+            ${q.special !== 'none' ? `<span class="special-chip special-${q.special}">${specialIcon(q.special)}</span>` : ''}
+        </div>`).join('');
+}
+
+async function handleCsvUpload(file) {
+    if (!gameId) { showToast('Save game settings first!', 'error'); return; }
+    const bar = document.getElementById('progressBar');
+    const fill = document.getElementById('progressFill');
+    const result = document.getElementById('uploadResult');
+    bar.style.display = 'block';
+    fill.style.width = '30%';
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+        fill.style.width = '70%';
+        const res = await fetch(`/api/games/${gameId}/upload-csv/`, {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'include',
+        });
+        fill.style.width = '100%';
+        const data = await res.json();
+        if (res.ok) {
+            result.innerHTML = `<div style="background:rgba(0,212,170,0.1);border:1px solid var(--teal);border-radius:10px;padding:1rem;color:var(--teal)">
+                ✅ <strong>${data.created} questions imported</strong> for tiles: ${data.tiles.join(', ')}
+                ${data.errors.length ? '<br>⚠️ Errors: ' + data.errors.slice(0,3).join('; ') : ''}
+            </div>`;
+            loadQuestions();
+        } else {
+            result.innerHTML = `<div style="color:var(--pink)">❌ ${data.error}</div>`;
+        }
+    } catch(e) {
+        result.innerHTML = `<div style="color:var(--pink)">❌ Upload failed</div>`;
+    } finally {
+        setTimeout(() => { bar.style.display = 'none'; fill.style.width = '0%'; }, 1500);
+    }
+}
+
+document.getElementById('qType').addEventListener('change', () => updateAnswerFields());
+
+function previewImage(url) {
+    const wrap  = document.getElementById('imagePreviewWrap');
+    const img   = document.getElementById('imagePreview');
+    const error = document.getElementById('imageError');
+    error.style.display = 'none';
+
+    if (!url || !url.trim()) {
+        wrap.style.display = 'none';
+        img.src = '';
+        return;
+    }
+
+    // Show preview optimistically, handle load error
+    img.onload  = () => { wrap.style.display = 'block'; error.style.display = 'none'; };
+    img.onerror = () => { wrap.style.display = 'none'; error.style.display = 'block'; };
+    img.src = url.trim();
+}
+
+function clearImage() {
+    document.getElementById('qImageUrl').value = '';
+    previewImage('');
+}
+
+function updateCoverPreview() {
+    const url = document.getElementById('gameCoverImage').value.trim();
+    const wrap = document.getElementById('coverPreviewWrap');
+    const img  = document.getElementById('coverPreview');
+    if (url) {
+        img.src = url;
+        img.onload  = () => wrap.style.display = 'block';
+        img.onerror = () => wrap.style.display = 'none';
+    } else {
+        wrap.style.display = 'none';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Manage Teachers – EdexFun{% endblock %}
+
+{% block extra_styles %}
+.page-header { padding: 2rem 0 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+.page-header h1 { font-family: var(--font-display); font-size: 2rem; }
+.teachers-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.teacher-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+.teacher-card .avatar {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--yellow));
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 1.4rem; color: var(--bg);
+    margin-bottom: 1rem;
+}
+.teacher-card h3 { font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.25rem; }
+.teacher-card .meta { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem; line-height: 1.6; }
+.teacher-card .actions { display: flex; gap: 0.5rem; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <div>
+            <h1>👥 Manage Teachers</h1>
+            <p style="color:var(--text-muted);font-weight:600">All registered teachers and their accounts</p>
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('addTeacherModal').style.display='flex'">+ Invite Teacher</button>
+    </div>
+
+    <div class="teachers-grid">
+        {% for teacher in teachers %}
+        <div class="teacher-card" id="teacher-{{ teacher.id }}">
+            <div class="avatar">{{ teacher.first_name|first|upper|default:teacher.username|first|upper }}</div>
+            <h3>{{ teacher.get_full_name|default:teacher.username }}</h3>
+            <div class="meta">
+                📧 {{ teacher.email }}<br>
+                {% if teacher.school %}🏫 {{ teacher.school }}<br>{% endif %}
+                📅 Joined {{ teacher.created_at|date:"M Y" }}
+            </div>
+            <div class="actions">
+                <button class="btn btn-danger btn-sm" onclick="deleteTeacher({{ teacher.id }}, '{{ teacher.username }}')">🗑 Remove</button>
+                <span class="badge {% if teacher.is_active %}badge-public{% else %}badge-private{% endif %}">
+                    {% if teacher.is_active %}Active{% else %}Disabled{% endif %}
+                </span>
+            </div>
+        </div>
+        {% empty %}
+        <div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text-muted)">
+            <div style="font-size:3rem;margin-bottom:1rem">👩‍🏫</div>
+            <h3 style="font-family:var(--font-display);font-size:1.4rem;color:var(--text);margin-bottom:0.5rem">No teachers yet</h3>
+            <p>Share the registration link with your teachers.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Teacher Modal -->
+<div class="modal-overlay" id="addTeacherModal" style="display:none">
+    <div class="modal">
+        <h2>✉️ Invite Teacher</h2>
+        <p style="color:var(--text-muted);margin-bottom:1.5rem;font-size:0.9rem">Share this registration link with teachers to join your platform:</p>
+        <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem">
+            <input type="text" class="form-control" id="regLink" value="{{ request.scheme }}://{{ request.get_host }}/accounts/register/" readonly>
+            <button class="btn btn-teal" onclick="copyLink()">📋 Copy</button>
+        </div>
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1.5rem">Or create an account on their behalf:</p>
+        <a href="/accounts/register/" class="btn btn-primary" style="display:block;text-align:center">Create Teacher Account</a>
+        <button class="btn btn-secondary" style="width:100%;margin-top:0.75rem" onclick="document.getElementById('addTeacherModal').style.display='none'">Close</button>
+    </div>
+</div>
+
+<script>
+async function deleteTeacher(id, name) {
+    if (!confirm(`Remove teacher "${name}"? This will delete all their games too.`)) return;
+    try {
+        await apiFetch(`/accounts/api/teachers/${id}/`, { method: 'DELETE' });
+        document.getElementById(`teacher-${id}`).remove();
+        showToast(`Teacher ${name} removed`);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+function copyLink() {
+    navigator.clipboard.writeText(document.getElementById('regLink').value);
+    showToast('Registration link copied!');
+}
+</script>
+{% endblock %}

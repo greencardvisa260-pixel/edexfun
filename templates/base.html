@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EdexFun{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ── DARK THEME (default) ─────────────────────────── */
+        :root, [data-theme="dark"] {
+            --bg: #0f0e17;
+            --surface: #1a1a2e;
+            --surface2: #16213e;
+            --accent: #ff6b35;
+            --accent2: #f7c59f;
+            --teal: #00d4aa;
+            --yellow: #ffe347;
+            --pink: #ff4d9e;
+            --blue: #4cc9f0;
+            --purple: #9b5de5;
+            --text: #fffffe;
+            --text-muted: #a7a9be;
+            --border: rgba(255,255,255,0.08);
+            --glow: 0 0 20px rgba(255,107,53,0.4);
+            --radius: 16px;
+            --font-display: 'Boogaloo', cursive;
+            --font-body: 'Nunito', sans-serif;
+            --nav-bg: rgba(26,26,46,0.92);
+            --input-bg: rgba(255,255,255,0.05);
+            --shadow: 0 4px 24px rgba(0,0,0,0.4);
+        }
+        /* ── LIGHT THEME ──────────────────────────────────── */
+        [data-theme="light"] {
+            --bg: #f5f5f0;
+            --surface: #ffffff;
+            --surface2: #f0ede8;
+            --accent: #e85d1a;
+            --accent2: #c44a0d;
+            --teal: #008f73;
+            --yellow: #c8960c;
+            --pink: #c4006a;
+            --blue: #0072b5;
+            --purple: #6b2fb3;
+            --text: #1a1a2e;
+            --text-muted: #5a5c72;
+            --border: rgba(0,0,0,0.1);
+            --glow: 0 0 20px rgba(232,93,26,0.2);
+            --nav-bg: rgba(255,255,255,0.95);
+            --input-bg: rgba(0,0,0,0.04);
+            --shadow: 0 4px 24px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: var(--font-body); min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+        [data-theme="dark"] body {
+            background-image:
+                radial-gradient(ellipse at 20% 0%,  rgba(155,93,229,0.15) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 100%, rgba(255,107,53,0.12) 0%, transparent 60%);
+        }
+
+        /* ── NAV ──────────────────────────────────────────── */
+        nav {
+            background: var(--nav-bg); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow);
+        }
+        .nav-logo {
+            font-family: var(--font-display); font-size: 1.7rem;
+            color: var(--accent); text-decoration: none; letter-spacing: 1px;
+        }
+        .nav-logo span { color: var(--yellow); }
+        .nav-links { display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap; }
+        .nav-links a {
+            color: var(--text-muted); text-decoration: none;
+            padding: 0.4rem 0.85rem; border-radius: 8px;
+            font-weight: 600; font-size: 0.88rem; transition: all 0.2s;
+        }
+        .nav-links a:hover { color: var(--text); background: var(--border); }
+        .nav-icon-btn {
+            height: 36px; border-radius: 8px;
+            background: transparent; border: 1px solid var(--border);
+            color: var(--text-muted); font-size: 0.85rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s; flex-shrink: 0; padding: 0 0.55rem;
+            font-family: var(--font-body); font-weight: 700; gap: 0.25rem;
+        }
+        .nav-icon-btn:hover { background: var(--border); color: var(--text); border-color: var(--accent); }
+        .nav-icon-btn.active { background: rgba(255,107,53,0.15); color: var(--accent); border-color: var(--accent); }
+
+        /* Language dropdown */
+        .lang-wrapper { position: relative; }
+        .lang-menu {
+            display: none; position: absolute; top: calc(100% + 6px); right: 0;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; overflow: hidden; box-shadow: var(--shadow);
+            min-width: 130px; z-index: 999;
+        }
+        .lang-menu.open { display: block; }
+        .lang-menu button {
+            display: flex; align-items: center; gap: 0.5rem; width: 100%;
+            padding: 0.6rem 1rem; background: none; border: none;
+            color: var(--text); font-family: var(--font-body); font-size: 0.88rem;
+            font-weight: 600; cursor: pointer; transition: background 0.15s;
+        }
+        .lang-menu button:hover { background: var(--border); }
+        .lang-menu button.selected { color: var(--accent); }
+
+        /* ── BUTTONS ──────────────────────────────────────── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.6rem 1.4rem; border-radius: 10px;
+            font-family: var(--font-body); font-weight: 700; font-size: 0.9rem;
+            cursor: pointer; border: none; transition: all 0.2s; text-decoration: none;
+        }
+        .btn-primary { background: var(--accent); color: white; }
+        .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(255,107,53,0.4); }
+        .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--border); }
+        .btn-danger { background: rgba(255,77,158,0.15); color: var(--pink); border: 1px solid var(--pink); }
+        .btn-danger:hover { background: var(--pink); color: white; }
+        .btn-teal { background: rgba(0,212,170,0.15); color: var(--teal); border: 1px solid var(--teal); }
+        .btn-teal:hover { background: var(--teal); color: var(--bg); }
+        .btn-sm { padding: 0.35rem 0.9rem; font-size: 0.8rem; border-radius: 8px; }
+
+        /* ── BADGES ───────────────────────────────────────── */
+        .badge { display: inline-flex; align-items: center; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; }
+        .badge-public  { background: rgba(0,212,170,0.15);   color: var(--teal); }
+        .badge-private { background: rgba(167,169,190,0.15); color: var(--text-muted); }
+        .badge-pending { background: rgba(255,227,71,0.15);  color: var(--yellow); }
+
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
+
+        /* ── TOASTS ───────────────────────────────────────── */
+        .toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 9999; }
+        .toast {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 12px; padding: 0.75rem 1.25rem; color: var(--text);
+            font-weight: 600; animation: slideIn 0.3s ease;
+            display: flex; align-items: center; gap: 0.5rem; box-shadow: var(--shadow);
+        }
+        .toast.success { border-left: 3px solid var(--teal); }
+        .toast.error   { border-left: 3px solid var(--pink); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ── MODALS (base, used by admin panel etc.) ───────── */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.55); backdrop-filter: blur(3px);
+            z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem;
+        }
+        .modal {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 20px; padding: 2rem; width: 100%; max-width: 560px;
+            animation: popIn 0.25s ease; box-shadow: var(--shadow);
+        }
+        @keyframes popIn { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal h2 { font-family: var(--font-display); font-size: 1.6rem; margin-bottom: 1.5rem; }
+
+        /* ── FORMS ────────────────────────────────────────── */
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; font-weight: 700; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.4rem; }
+        .form-control { width: 100%; background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; padding: 0.65rem 1rem; color: var(--text); font-family: var(--font-body); font-size: 0.95rem; transition: border-color 0.2s; }
+        .form-control:focus { outline: none; border-color: var(--accent); background: rgba(255,107,53,0.05); }
+        select.form-control option { background: var(--surface2); }
+
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <nav>
+        <a href="/dashboard/" class="nav-logo" id="siteLogo">Edex<span>Fun</span></a>
+        <div class="nav-links">
+            <a href="/dashboard/" data-i18n="nav_main">🏠 Main</a>
+            {% if user.role == 'admin' or user.is_superuser %}
+            <a href="/admin-panel/" data-i18n="nav_admin">⚙️ Admin</a>
+            {% endif %}
+            <!-- Sound toggle -->
+            <button class="nav-icon-btn" id="navSoundBtn" onclick="navToggleSound()" title="Toggle sound">🔊</button>
+            <!-- Theme toggle -->
+            <button class="nav-icon-btn" id="navThemeBtn" onclick="navToggleTheme()" title="Toggle theme">🌙</button>
+            <!-- Language toggle -->
+            <div class="lang-wrapper">
+                <button class="nav-icon-btn" id="navLangBtn" onclick="toggleLangMenu()" title="Language">🌐 <span id="navLangLabel">EN</span></button>
+                <div class="lang-menu" id="langMenu">
+                    <button onclick="setLang('en')" id="langOptEn" class="selected">🇬🇧 English</button>
+                    <button onclick="setLang('ru')" id="langOptRu">🇷🇺 Русский</button>
+                </div>
+            </div>
+            <a href="/accounts/logout/" class="btn btn-secondary btn-sm" data-i18n="nav_sign_out">Sign Out</a>
+        </div>
+    </nav>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════
+    // TRANSLATION DICTIONARY
+    // ═══════════════════════════════════════════════════════
+    const TRANSLATIONS = {
+        en: {
+            // Nav
+            nav_main:        '🏠 Main',
+            nav_admin:        '⚙️ Admin',
+            nav_sign_out:     'Sign Out',
+
+            // Dashboard
+            dash_welcome:     'Welcome back',
+            dash_subtitle_admin: 'Admin dashboard — full system overview',
+            dash_subtitle:    'Ready to EdexFun your students today?',
+            dash_create:      '➕ Create New Game',
+            dash_admin_overview: '⚙️ Admin Overview',
+            dash_open_admin:  'Open Full Admin Panel →',
+            dash_pending_label: '⏳ Pending Approvals',
+            dash_popular_label: '🏆 Most Played Games',
+            dash_all_approved: '✓ All teachers approved',
+            dash_no_games_played: 'No games played yet',
+            dash_my_games:    '🎲 My Games',
+            dash_all_games:   '🎲 All Games',
+            dash_new_game_btn:'+ New Game',
+            dash_public_games:'🌍 Public Games from Other Teachers',
+            dash_no_games_title:'No games yet!',
+            dash_no_games_sub: 'Create your first game to get started.',
+            dash_create_btn:  'Create Game',
+            dash_stat_my:     'My Games',
+            dash_stat_all:    'All Games',
+            dash_stat_public: 'Public Games',
+            dash_stat_qtypes: 'Question Types',
+            dash_stat_teams:  'Max Teams',
+            dash_search_ph:   '🔍  Search games by title...',
+            dash_search_btn:  'Search',
+            dash_approve_btn: '✓ Approve',
+            dash_by_label:    'by',
+            dash_questions:   'questions',
+            dash_play:        '▶ Play',
+            dash_edit:        '✏ Edit',
+            dash_no_public_title: 'No public games yet',
+            dash_no_public_sub: 'Be the first to share a game!',
+            dash_no_results:  'No results found',
+            dash_total_games: 'Total Games',
+            dash_teachers:    'Teachers',
+            dash_pending_approval: 'Pending Approval',
+            dash_sessions:    'Sessions Played',
+
+            // Admin panel
+            adm_title:        '⚙️ Admin Panel',
+            adm_subtitle:     'Manage teachers, monitor usage, configure sounds',
+            adm_tab_stats:    '📊 Stats',
+            adm_tab_teachers: '👥 Teachers',
+            adm_tab_sounds:   '🔊 Sounds',
+            adm_tab_sessions: '🎮 Sessions',
+            adm_stat_games:   'Total Games',
+            adm_stat_teachers:'Teachers',
+            adm_stat_pending: 'Pending Approval',
+            adm_stat_sessions:'Total Sessions',
+            adm_popular:      '🏆 Most Played Games',
+            adm_activity:     '🧑‍🏫 Teacher Activity',
+            adm_col_teacher:  'Teacher',
+            adm_col_sessions: 'Sessions',
+            adm_col_lastlogin:'Last Login',
+            adm_col_status:   'Status',
+            adm_teachers_title:'Teacher Accounts',
+            adm_no_teachers:  'No teachers registered yet.',
+            adm_approved:     '✓ Approved',
+            adm_pending:      '⏳ Pending',
+            adm_revoke:       'Revoke',
+            adm_approve:      '✓ Approve',
+            adm_sounds_title: 'Sound Configuration',
+            adm_save_sounds:  '💾 Save Changes',
+            adm_snd_bg:       '🎵 Background Music',
+            adm_snd_bg_desc:  'Ambient pad loop during gameplay',
+            adm_snd_correct:  '✅ Correct Answer',
+            adm_snd_correct_desc:'Rising chime when answer is right',
+            adm_snd_wrong:    '❌ Wrong Answer',
+            adm_snd_wrong_desc:'Descending wah when answer is wrong',
+            adm_snd_fanfare:  '🏆 Winner Fanfare',
+            adm_snd_fanfare_desc:'Brass burst on game end',
+            adm_snd_tile:     '🖱 Tile Click',
+            adm_snd_tile_desc:'Soft blip when selecting a tile',
+            adm_snd_powerup:  '⚡ Power-up',
+            adm_snd_powerup_desc:'Special sound for power-up tiles',
+            adm_snd_volume:   '🔊 Master Volume',
+            adm_sessions_title:'Recent Sessions (last 7 days)',
+            adm_col_game:     'Game',
+            adm_col_host:     'Host',
+            adm_col_started:  'Started',
+            adm_col_duration: 'Duration',
+            adm_no_sessions:  'No sessions in last 7 days',
+            adm_no_activity:  'No teacher activity yet',
+            adm_no_popular:   'No games played yet',
+            adm_never:        'Never',
+            adm_active:       'Active',
+            adm_finished:     'Finished',
+            adm_waiting:      'Waiting',
+            adm_min:          'min',
+            adm_saved:        'Sound settings saved!',
+            adm_approved_ok:  'Teacher approved ✓',
+            adm_revoked:      'Approval revoked',
+            adm_removed:      'removed',
+
+            // Play page
+            play_setup_title: 'Game Setup',
+            play_setup_sub:   'Configure teams and start playing',
+            play_teams_label: 'Number of Teams',
+            play_teams_btn:   'Teams',
+            play_team_name:   'Team name',
+            play_back:        '← Back',
+            play_start:       '🚀 Start Game!',
+            play_hint:        '💡 Hint',
+            play_end:         '⏹ End Game',
+            play_reveal:      '👁 Reveal Answer',
+            play_correct_answer:'✅ Correct Answer:',
+            play_correct_btn: '✅ Correct!',
+            play_wrong_btn:   '❌ Wrong!',
+            play_open_q:      'Open Question — Teacher Judges',
+            play_open_q_sub:  "Listen to the team's answer, then mark it:",
+            play_award:       'Award',
+            play_pts_to:      'pts to',
+            play_incorrect:   '❌ Incorrect! No power-up.',
+            play_next:        'Next ➡',
+            play_steal_from:  '💸 Steal from',
+            play_bomb:        '💣 Bomb',
+            play_end_confirm: 'End the game now?',
+            play_winner:      '🏆 Winner!',
+            play_play_again:  '🔁 Play Again',
+            play_back_dash:   '🏠 Main',
+            play_points:      'pts',
+            play_score:       'Score',
+            play_game_over:   'Game Over!',
+            play_wins_with:   'wins with',
+            play_q_multiple:  '🔤 Multiple Choice',
+            play_q_truefalse: '✅ True / False',
+            play_q_text:      '📝 Text Q&A',
+            play_tf_true:     '✅ True',
+            play_tf_false:    '❌ False',
+            play_swap_with:   '🔀 Swap with',
+            play_no_steal:    '💸 No teams with points to steal from',
+            // Editor
+            ed_title_new:     'New Game',
+            ed_title_edit:    'Edit Game',
+            ed_save:          '💾 Save Game',
+            ed_back:          '← Main',
+            ed_game_settings: '⚙️ Game Settings',
+            ed_game_title:    'Game Title',
+            ed_game_title_ph: 'e.g. World Geography Quiz',
+            ed_description:   'Description',
+            ed_desc_ph:       'Brief description...',
+            ed_subject:       'Subject',
+            ed_subject_ph:    'Math, Science...',
+            ed_grade:         'Grade Level',
+            ed_grade_ph:      'Grade 7, K-12...',
+            ed_grid:          'Grid Size',
+            ed_visibility:    'Visibility',
+            ed_vis_private:   '🔒 Private',
+            ed_vis_public:    '🌍 Public',
+            ed_cover_label:   '🖼 Cover Image URL',
+            ed_cover_ph:      'https://example.com/cover.webp',
+            ed_questions:     'Questions',
+            ed_tile:          'Tile',
+            ed_type:          'Question Type',
+            ed_type_text:     '📝 Text Q&A',
+            ed_type_mc:       '🔤 Multiple Choice',
+            ed_type_tf:       '✅ True / False',
+            ed_question:      'Question Text *',
+            ed_q_ph:          'What is your question?',
+            ed_image:         '🖼 Image URL (optional)',
+            ed_image_ph:      'https://example.com/image.jpg',
+            ed_answer:        'Correct Answer',
+            ed_points:        'Points',
+            ed_time:          'Time Limit (sec)',
+            ed_special:       '⚡ Special Tile',
+            ed_sp_none:       'None',
+            ed_sp_double:     '🌟 Double Points',
+            ed_sp_steal:      '💸 Steal Points',
+            ed_sp_bomb:       '💣 Bomb (remove opponent points)',
+            ed_sp_swap:       '🔀 Swap Scores',
+            ed_hint:          'Hint (optional)',
+            ed_hint_ph:       'Give students a nudge...',
+            ed_save_q:        '💾 Save Question',
+            ed_delete_q:      '🗑 Delete',
+            ed_upload_csv:    '📤 Upload CSV',
+            ed_download_csv:  '⬇ Download CSV Template',
+            ed_grid_preview:  '🗺️ Grid Preview',
+            ed_grid_sub:      'Click a tile to add or edit its question.',
+            ed_csv_title:     '📂 Upload Questions via CSV',
+            ed_csv_drop:      'Drop your CSV here',
+            ed_csv_sub:       'or click to browse · Supports all question types',
+            ed_tab_q:         'Question',
+            ed_tab_ans:       'Answer',
+            ed_tab_set:       'Settings',
+            ed_q_editor:      '✍️ Tile',
+            ed_q_editor_sub:  '– Question Editor',
+            ed_opt_a:         'Option A',
+            ed_opt_b:         'Option B',
+            ed_opt_c:         'Option C',
+            ed_opt_d:         'Option D',
+            ed_correct_ans:   'Correct Answer',
+
+            // Login / Register
+            login_title:      '👋 Welcome back!',
+            login_username:   'Username',
+            login_password:   'Password',
+            login_btn:        'Sign In 🚀',
+            login_no_acct:    'New teacher?',
+            login_create:     'Create an account →',
+            login_tagline:    'The classroom quiz game teachers love',
+            reg_title:        '✨ Join EdexFun',
+            reg_fname:        'First Name',
+            reg_lname:        'Last Name',
+            reg_username:     'Username',
+            reg_email:        'Email',
+            reg_school:       'School (optional)',
+            reg_password:     'Password',
+            reg_confirm:      'Confirm Password',
+            reg_btn:          'Create Account 🎉',
+            reg_have_acct:    'Already have an account?',
+            reg_sign_in:      'Sign in →',
+            reg_pending_title:'Account Created!',
+            reg_pending_sub:  'Your account is pending admin approval. You\'ll be able to log in once an administrator approves your account.',
+            reg_back_login:   '← Back to Login',
+            reg_tagline:      'Create your teacher account',
+        },
+        ru: {
+            // Nav
+            nav_main:        '🏠 Главная',
+            nav_admin:        '⚙️ Админ',
+            nav_sign_out:     'Выйти',
+
+            // Dashboard
+            dash_welcome:     'С возвращением',
+            dash_subtitle_admin: 'Панель администратора — полный обзор системы',
+            dash_subtitle:    'Готовы удивить учеников сегодня?',
+            dash_create:      '➕ Создать игру',
+            dash_admin_overview: '⚙️ Обзор администратора',
+            dash_open_admin:  'Открыть полную панель →',
+            dash_pending_label: '⏳ Ожидают одобрения',
+            dash_popular_label: '🏆 Самые популярные игры',
+            dash_all_approved: '✓ Все учителя одобрены',
+            dash_no_games_played: 'Игр пока не было',
+            dash_my_games:    '🎲 Мои игры',
+            dash_all_games:   '🎲 Все игры',
+            dash_new_game_btn:'+ Новая игра',
+            dash_public_games:'🌍 Публичные игры других учителей',
+            dash_no_games_title:'Игр пока нет!',
+            dash_no_games_sub: 'Создайте свою первую игру.',
+            dash_create_btn:  'Создать игру',
+            dash_stat_my:     'Мои игры',
+            dash_stat_all:    'Все игры',
+            dash_stat_public: 'Публичные игры',
+            dash_stat_qtypes: 'Типы вопросов',
+            dash_stat_teams:  'Макс. команд',
+            dash_search_ph:   '🔍  Поиск игр по названию...',
+            dash_search_btn:  'Поиск',
+            dash_approve_btn: '✓ Одобрить',
+            dash_by_label:    'от',
+            dash_questions:   'вопросов',
+            dash_play:        '▶ Играть',
+            dash_edit:        '✏ Изменить',
+            dash_no_public_title: 'Публичных игр пока нет',
+            dash_no_public_sub: 'Будьте первым, кто поделится игрой!',
+            dash_no_results:  'Ничего не найдено',
+            dash_total_games: 'Всего игр',
+            dash_teachers:    'Учителей',
+            dash_pending_approval: 'Ожидают одобрения',
+            dash_sessions:    'Сыграно сессий',
+
+            // Admin panel
+            adm_title:        '⚙️ Панель администратора',
+            adm_subtitle:     'Управление учителями, статистика, звук',
+            adm_tab_stats:    '📊 Статистика',
+            adm_tab_teachers: '👥 Учителя',
+            adm_tab_sounds:   '🔊 Звуки',
+            adm_tab_sessions: '🎮 Сессии',
+            adm_stat_games:   'Всего игр',
+            adm_stat_teachers:'Учителей',
+            adm_stat_pending: 'Ожидают одобрения',
+            adm_stat_sessions:'Всего сессий',
+            adm_popular:      '🏆 Самые популярные игры',
+            adm_activity:     '🧑‍🏫 Активность учителей',
+            adm_col_teacher:  'Учитель',
+            adm_col_sessions: 'Сессий',
+            adm_col_lastlogin:'Последний вход',
+            adm_col_status:   'Статус',
+            adm_teachers_title:'Аккаунты учителей',
+            adm_no_teachers:  'Учителей пока нет.',
+            adm_approved:     '✓ Одобрен',
+            adm_pending:      '⏳ Ожидает',
+            adm_revoke:       'Отозвать',
+            adm_approve:      '✓ Одобрить',
+            adm_sounds_title: 'Настройка звуков',
+            adm_save_sounds:  '💾 Сохранить',
+            adm_snd_bg:       '🎵 Фоновая музыка',
+            adm_snd_bg_desc:  'Фоновый звук во время игры',
+            adm_snd_correct:  '✅ Правильный ответ',
+            adm_snd_correct_desc:'Звонок при правильном ответе',
+            adm_snd_wrong:    '❌ Неправильный ответ',
+            adm_snd_wrong_desc:'Звук при неправильном ответе',
+            adm_snd_fanfare:  '🏆 Победный фанфар',
+            adm_snd_fanfare_desc:'Фанфар в конце игры',
+            adm_snd_tile:     '🖱 Клик по плитке',
+            adm_snd_tile_desc:'Звук при выборе плитки',
+            adm_snd_powerup:  '⚡ Бонус',
+            adm_snd_powerup_desc:'Звук при активации бонуса',
+            adm_snd_volume:   '🔊 Общая громкость',
+            adm_sessions_title:'Последние сессии (7 дней)',
+            adm_col_game:     'Игра',
+            adm_col_host:     'Ведущий',
+            adm_col_started:  'Начало',
+            adm_col_duration: 'Длительность',
+            adm_no_sessions:  'Сессий за последние 7 дней нет',
+            adm_no_activity:  'Активности учителей пока нет',
+            adm_no_popular:   'Игр пока не было',
+            adm_never:        'Никогда',
+            adm_active:       'Активна',
+            adm_finished:     'Завершена',
+            adm_waiting:      'Ожидание',
+            adm_min:          'мин',
+            adm_saved:        'Настройки звука сохранены!',
+            adm_approved_ok:  'Учитель одобрен ✓',
+            adm_revoked:      'Одобрение отозвано',
+            adm_removed:      'удалён',
+
+            // Play page
+            play_setup_title: 'Настройка игры',
+            play_setup_sub:   'Настройте команды и начните игру',
+            play_teams_label: 'Количество команд',
+            play_teams_btn:   'команды',
+            play_team_name:   'Название команды',
+            play_back:        '← Назад',
+            play_start:       '🚀 Начать игру!',
+            play_hint:        '💡 Подсказка',
+            play_end:         '⏹ Завершить',
+            play_reveal:      '👁 Показать ответ',
+            play_correct_answer:'✅ Правильный ответ:',
+            play_correct_btn: '✅ Правильно!',
+            play_wrong_btn:   '❌ Неправильно!',
+            play_open_q:      'Открытый вопрос — судит учитель',
+            play_open_q_sub:  'Выслушайте ответ команды и оцените его:',
+            play_award:       'Дать',
+            play_pts_to:      'очков команде',
+            play_incorrect:   '❌ Неправильно! Бонус не активирован.',
+            play_next:        'Далее ➡',
+            play_steal_from:  '💸 Украсть у',
+            play_bomb:        '💣 Бомба',
+            play_end_confirm: 'Завершить игру?',
+            play_winner:      '🏆 Победитель!',
+            play_play_again:  '🔁 Снова',
+            play_back_dash:   '🏠 Главная',
+            play_points:      'очков',
+            play_score:       'Счёт',
+            play_game_over:   'Игра окончена!',
+            play_wins_with:   'победил с',
+            play_q_multiple:  '🔤 Множественный выбор',
+            play_q_truefalse: '✅ Правда / Ложь',
+            play_q_text:      '📝 Открытый вопрос',
+            play_tf_true:     '✅ Правда',
+            play_tf_false:    '❌ Ложь',
+            play_swap_with:   '🔀 Поменяться с',
+            play_no_steal:    '💸 Нет команд с очками для кражи',
+            // Editor
+            ed_title_new:     'Новая игра',
+            ed_title_edit:    'Редактировать игру',
+            ed_save:          '💾 Сохранить',
+            ed_back:          '← Главная',
+            ed_game_settings: '⚙️ Настройки игры',
+            ed_game_title:    'Название игры',
+            ed_game_title_ph: 'напр. Викторина по географии',
+            ed_description:   'Описание',
+            ed_desc_ph:       'Краткое описание...',
+            ed_subject:       'Предмет',
+            ed_subject_ph:    'Математика, Физика...',
+            ed_grade:         'Класс',
+            ed_grade_ph:      '7 класс, 1-11...',
+            ed_grid:          'Размер сетки',
+            ed_visibility:    'Видимость',
+            ed_vis_private:   '🔒 Приватная',
+            ed_vis_public:    '🌍 Публичная',
+            ed_cover_label:   '🖼 URL обложки',
+            ed_cover_ph:      'https://example.com/cover.webp',
+            ed_questions:     'Вопросы',
+            ed_tile:          'Плитка',
+            ed_type:          'Тип вопроса',
+            ed_type_text:     '📝 Открытый вопрос',
+            ed_type_mc:       '🔤 Множественный выбор',
+            ed_type_tf:       '✅ Правда / Ложь',
+            ed_question:      'Текст вопроса *',
+            ed_q_ph:          'Введите вопрос...',
+            ed_image:         '🖼 URL изображения (необязательно)',
+            ed_image_ph:      'https://example.com/image.jpg',
+            ed_answer:        'Правильный ответ',
+            ed_points:        'Очки',
+            ed_time:          'Время (сек)',
+            ed_special:       '⚡ Особая плитка',
+            ed_sp_none:       'Нет',
+            ed_sp_double:     '🌟 Двойные очки',
+            ed_sp_steal:      '💸 Украсть очки',
+            ed_sp_bomb:       '💣 Бомба (убрать очки)',
+            ed_sp_swap:       '🔀 Поменять счёт',
+            ed_hint:          'Подсказка (необязательно)',
+            ed_hint_ph:       'Помогите ученикам...',
+            ed_save_q:        '💾 Сохранить вопрос',
+            ed_delete_q:      '🗑 Удалить',
+            ed_upload_csv:    '📤 Загрузить CSV',
+            ed_download_csv:  '⬇ Шаблон CSV',
+            ed_grid_preview:  '🗺️ Предпросмотр сетки',
+            ed_grid_sub:      'Нажмите на плитку, чтобы добавить вопрос.',
+            ed_csv_title:     '📂 Загрузить вопросы из CSV',
+            ed_csv_drop:      'Перетащите CSV сюда',
+            ed_csv_sub:       'или нажмите для выбора · Все типы вопросов',
+            ed_tab_q:         'Вопрос',
+            ed_tab_ans:       'Ответ',
+            ed_tab_set:       'Настройки',
+            ed_q_editor:      '✍️ Плитка',
+            ed_q_editor_sub:  '– Редактор вопроса',
+            ed_opt_a:         'Вариант А',
+            ed_opt_b:         'Вариант Б',
+            ed_opt_c:         'Вариант В',
+            ed_opt_d:         'Вариант Г',
+            ed_correct_ans:   'Правильный ответ',
+
+            // Login / Register
+            login_title:      '👋 С возвращением!',
+            login_username:   'Имя пользователя',
+            login_password:   'Пароль',
+            login_btn:        'Войти 🚀',
+            login_no_acct:    'Новый учитель?',
+            login_create:     'Создать аккаунт →',
+            login_tagline:    'Любимая викторина для класса',
+            reg_title:        '✨ Присоединиться к EdexFun',
+            reg_fname:        'Имя',
+            reg_lname:        'Фамилия',
+            reg_username:     'Имя пользователя',
+            reg_email:        'Email',
+            reg_school:       'Школа (необязательно)',
+            reg_password:     'Пароль',
+            reg_confirm:      'Подтвердите пароль',
+            reg_btn:          'Создать аккаунт 🎉',
+            reg_have_acct:    'Уже есть аккаунт?',
+            reg_sign_in:      'Войти →',
+            reg_pending_title:'Аккаунт создан!',
+            reg_pending_sub:  'Ваш аккаунт ожидает одобрения администратора. Вы сможете войти после одобрения.',
+            reg_back_login:   '← Назад к входу',
+            reg_tagline:      'Создайте аккаунт учителя',
+        }
+    };
+
+    // ═══════════════════════════════════════════════════════
+    // LANGUAGE ENGINE
+    // ═══════════════════════════════════════════════════════
+    let _lang = localStorage.getItem('bbLang') || 'en';
+
+    function t(key) {
+        return (TRANSLATIONS[_lang] && TRANSLATIONS[_lang][key]) ||
+               (TRANSLATIONS['en'][key]) || key;
+    }
+
+    function applyLang() {
+        document.documentElement.setAttribute('data-lang', _lang);
+        document.documentElement.setAttribute('lang', _lang);
+        // Translate all [data-i18n] elements
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            const val = t(key);
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                if (el.placeholder !== undefined) el.placeholder = val;
+            } else {
+                el.innerHTML = val;
+            }
+        });
+        // Translate [data-i18n-ph] placeholders
+        document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+            el.placeholder = t(el.getAttribute('data-i18n-ph'));
+        });
+        // Update lang button label
+        const lbl = document.getElementById('navLangLabel');
+        if (lbl) lbl.textContent = _lang.toUpperCase();
+        // Update selected state in menu
+        document.getElementById('langOptEn')?.classList.toggle('selected', _lang === 'en');
+        document.getElementById('langOptRu')?.classList.toggle('selected', _lang === 'ru');
+        // Let each page react if it has a handler
+        if (typeof onLangChange === 'function') onLangChange(_lang);
+    }
+
+    function setLang(lang) {
+        _lang = lang;
+        localStorage.setItem('bbLang', lang);
+        closeLangMenu();
+        applyLang();
+    }
+
+    function toggleLangMenu() {
+        document.getElementById('langMenu').classList.toggle('open');
+    }
+    function closeLangMenu() {
+        document.getElementById('langMenu')?.classList.remove('open');
+    }
+    // Close lang menu when clicking outside
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.lang-wrapper')) closeLangMenu();
+    });
+
+    // ── THEME ──────────────────────────────────────────────
+    (function() {
+        const saved = localStorage.getItem('bbTheme') || 'dark';
+        document.documentElement.setAttribute('data-theme', saved);
+    })();
+
+    function navToggleTheme() {
+        const html = document.documentElement;
+        const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        html.setAttribute('data-theme', next);
+        localStorage.setItem('bbTheme', next);
+        document.getElementById('navThemeBtn').textContent = next === 'dark' ? '🌙' : '☀️';
+    }
+
+    // ── SOUND ──────────────────────────────────────────────
+    let _globalMuted = localStorage.getItem('bbMuted') === 'true';
+
+    function navToggleSound() {
+        _globalMuted = !_globalMuted;
+        localStorage.setItem('bbMuted', _globalMuted);
+        _updateSoundBtn();
+        if (typeof muted !== 'undefined') {
+            muted = _globalMuted;
+            if (typeof bgGain !== 'undefined' && bgGain && typeof getCtx !== 'undefined') {
+                bgGain.gain.setTargetAtTime(_globalMuted ? 0 : 0.06, getCtx().currentTime, 0.3);
+            }
+        }
+    }
+    function _updateSoundBtn() {
+        const btn = document.getElementById('navSoundBtn');
+        if (btn) { btn.textContent = _globalMuted ? '🔇' : '🔊'; btn.classList.toggle('active', _globalMuted); }
+    }
+
+    // ── TOASTS ─────────────────────────────────────────────
+    function showToast(msg, type='success') {
+        const c = document.getElementById('toastContainer');
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.innerHTML = (type === 'success' ? '✅ ' : '❌ ') + msg;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+
+    function getCookie(name) {
+        const v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+        return v ? v[2] : null;
+    }
+
+    async function apiFetch(url, options = {}) {
+        const defaults = {
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            credentials: 'include',
+        };
+        const merged = { ...defaults, ...options };
+        if (options.headers) merged.headers = { ...defaults.headers, ...options.headers };
+        const res = await fetch(url, merged);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: 'Request failed' }));
+            throw new Error(err.error || err.detail || 'Request failed');
+        }
+        return res.json();
+    }
+
+    // Apply language and icons on DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+        const theme = document.documentElement.getAttribute('data-theme');
+        const themeBtn = document.getElementById('navThemeBtn');
+        if (themeBtn) themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+        _updateSoundBtn();
+        applyLang();
+        // Load site branding
+        fetch('/accounts/api/site-settings/', {credentials: 'include'})
+            .then(r => r.ok ? r.json() : null)
+            .then(s => {
+                if (!s) return;
+                const logo = document.getElementById('siteLogo');
+                if (!logo) return;
+                if (s.logo_type === 'image' && s.logo_image_url) {
+                    logo.innerHTML = `<img src="${s.logo_image_url}" alt="logo" style="height:36px;object-fit:contain;vertical-align:middle">`;
+                } else if (s.logo_text && s.logo_text !== 'EdexFun') {
+                    const txt = s.logo_text;
+                    const mid = Math.ceil(txt.length / 2);
+                    logo.innerHTML = txt.slice(0, mid) + '<span>' + txt.slice(mid) + '</span>';
+                }
+            })
+            .catch(() => {});
+    });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

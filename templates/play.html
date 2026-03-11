@@ -1,0 +1,979 @@
+{% extends "base.html" %}
+{% block title %}Playing: {{ game.title }} – EdexFun{% endblock %}
+
+{% block extra_styles %}
+body { overflow-x: hidden; }
+nav { display: none !important; }
+.container { max-width:100% !important; padding:0 1rem !important; width:100% !important; }
+
+/* ── SETUP SCREEN ── */
+#setupScreen {
+    position:fixed; inset:0; z-index:200;
+    background:var(--bg);
+    background-image:radial-gradient(ellipse at 30% 30%,rgba(155,93,229,0.25) 0%,transparent 60%),
+                     radial-gradient(ellipse at 70% 70%,rgba(255,107,53,0.2) 0%,transparent 60%);
+    display:flex; align-items:center; justify-content:center; padding:1.5rem;
+}
+.setup-card { background:var(--surface); border:1px solid var(--border); border-radius:24px; padding:2.5rem; width:100%; max-width:560px; }
+.setup-card h1 { font-family:var(--font-display); font-size:2rem; margin-bottom:0.5rem; }
+.setup-card .sub { color:var(--text-muted); margin-bottom:2rem; font-weight:600; }
+.team-inputs { display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem; }
+.team-input-row { display:flex; align-items:center; gap:0.75rem; }
+.team-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+.team-count-btns { display:flex; gap:0.5rem; margin-bottom:1.5rem; }
+.team-count-btn { flex:1; padding:0.6rem; border:1px solid var(--border); background:transparent; border-radius:10px; color:var(--text-muted); font-family:var(--font-body); font-weight:700; cursor:pointer; transition:all 0.2s; }
+.team-count-btn.active { background:var(--accent); color:white; border-color:var(--accent); }
+
+/* ── BOARD HEADER ── */
+.board-header { display:flex; align-items:center; justify-content:space-between; padding:1rem 0 0.75rem; flex-wrap:wrap; gap:0.5rem; position:relative; z-index:400; }
+.game-title { font-family:var(--font-display); font-size:1.6rem; }
+
+/* ── TEAMS BAR — always on top ── */
+.teams-bar { display:flex; gap:0.75rem; margin-bottom:0.75rem; flex-wrap:wrap; position:relative; z-index:400; }
+.team-chip {
+    flex:1; min-width:130px;
+    background:color-mix(in srgb,var(--chip-color,var(--accent)) 18%,var(--surface));
+    border:2px solid color-mix(in srgb,var(--chip-color,var(--accent)) 50%,transparent);
+    border-radius:14px; padding:0.85rem 1.1rem;
+    transition:all 0.2s; position:relative; overflow:hidden;
+}
+.team-chip::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--chip-color,var(--accent)); opacity:0; transition:opacity 0.2s; }
+.team-chip.active-team { border-color:var(--chip-color,var(--accent)); box-shadow:0 0 18px color-mix(in srgb,var(--chip-color,var(--accent)) 40%,transparent); }
+.team-chip.active-team::before { opacity:1; }
+.team-chip .chip-name { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:0.2rem; display:flex; align-items:center; gap:0.35rem; }
+.team-chip .chip-score { font-family:var(--font-display); font-size:clamp(2rem,3.5vw,2.8rem); line-height:1; color:#fff; text-shadow:0 2px 8px rgba(0,0,0,0.6),0 0 20px color-mix(in srgb,var(--chip-color,var(--accent)) 80%,transparent); font-weight:900; }
+
+/* ── GRID ── */
+.grid-container { background:rgba(0,0,0,0.25); border-radius:16px; padding:0.75rem; width:100%; }
+.play-grid { display:grid; gap:6px; width:100%; grid-auto-rows:var(--tile-h,80px); }
+.play-tile {
+    height:var(--tile-h,80px); border-radius:10px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-size:clamp(1.15rem,2.5vw,2rem);
+    cursor:pointer; transition:all 0.22s;
+    border:2px solid rgba(255,255,255,0.18);
+    background:linear-gradient(135deg,#252848,#1a1d38);
+    position:relative; overflow:hidden; user-select:none;
+    color:rgba(255,255,255,0.9);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.play-tile:not(.revealed):not(.empty):hover { transform:scale(1.07); border-color:var(--accent); background:linear-gradient(135deg,#2e3260,#232650); box-shadow:0 6px 20px rgba(255,107,53,0.4),inset 0 1px 0 rgba(255,255,255,0.12); color:white; }
+.play-tile.revealed { cursor:default; background:rgba(0,0,0,0.5) !important; border:2px solid rgba(255,255,255,0.04) !important; box-shadow:none !important; opacity:0.3; transform:none !important; }
+.play-tile.revealed::after { content:'✓'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.4rem; color:rgba(255,255,255,0.25); font-family:var(--font-body); }
+.play-tile.empty { cursor:not-allowed; opacity:0.12; background:rgba(255,255,255,0.02); border-color:rgba(255,255,255,0.04); }
+.play-tile.active-tile { border-color:var(--accent) !important; background:linear-gradient(135deg,#3a2010,#2a1808) !important; box-shadow:0 0 0 3px rgba(255,107,53,0.35),0 8px 28px rgba(255,107,53,0.45) !important; animation:tileGlow 1.4s ease-in-out infinite; color:var(--accent) !important; }
+@keyframes tileGlow {
+    0%,100% { box-shadow:0 0 0 3px rgba(255,107,53,0.3),0 8px 24px rgba(255,107,53,0.35); }
+    50%      { box-shadow:0 0 0 6px rgba(255,107,53,0.15),0 12px 32px rgba(255,107,53,0.5); }
+}
+
+/* ── QUESTION MODAL ── */
+#questionModal {
+    display:none;
+    position:fixed;
+    top: var(--modal-top, 0px);   /* set by JS to sit below teams bar */
+    left:0; right:0; bottom:0;
+    z-index:300;
+    background:rgba(0,0,0,0.55);
+    backdrop-filter:blur(3px);
+    align-items:flex-start;
+    justify-content:center;
+    padding:0.75rem;
+    overflow-y:auto;
+}
+#questionModal.open { display:flex; }
+.q-modal {
+    background:var(--surface);
+    border:2px solid rgba(255,255,255,0.13);
+    border-radius:24px;
+    box-shadow:0 0 0 1px rgba(255,107,53,0.18),0 32px 80px rgba(0,0,0,0.75),inset 0 1px 0 rgba(255,255,255,0.07);
+    padding:clamp(1.2rem,2.5vw,2.5rem) clamp(1.5rem,3.5vw,3.5rem);
+    width:100%; max-width:1000px;
+    /* Height: fills the space below teams bar */
+    height:calc(100vh - var(--modal-top, 0px) - 1.5rem);
+    max-height:calc(100vh - var(--modal-top, 0px) - 1.5rem);
+    position:relative; overflow-y:auto;
+    display:flex; flex-direction:column; justify-content:center;
+    flex-shrink:0;
+    animation:popIn 0.22s cubic-bezier(0.34,1.3,0.64,1);
+}
+.q-close { position:absolute; top:1rem; right:1rem; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.08); border:1px solid var(--border); color:var(--text); font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; z-index:10; font-family:var(--font-body); flex-shrink:0; }
+.q-close:hover { background:var(--pink); border-color:var(--pink); transform:scale(1.1); }
+.q-type-badge { display:inline-flex; align-items:center; gap:0.4rem; padding:0.35rem 0.9rem; border-radius:20px; font-size:clamp(0.8rem,1.3vw,0.95rem); font-weight:700; margin-bottom:0; flex-shrink:0; }
+.q-points { font-family:var(--font-display); font-size:clamp(1rem,1.8vw,1.35rem); color:var(--yellow); margin-bottom:0; }
+.q-text { font-family:var(--font-display); font-size:clamp(1.7rem,3.8vw,3rem); line-height:1.25; text-align:center; margin-bottom:1.25rem; }
+.mc-options { display:grid; grid-template-columns:1fr 1fr; gap:clamp(0.5rem,1.5vw,1rem); margin-bottom:1.5rem; }
+.mc-btn { padding:clamp(0.9rem,2vw,1.5rem); border:2px solid var(--border); border-radius:14px; background:transparent; color:var(--text); font-family:var(--font-body); font-weight:700; font-size:clamp(1rem,2vw,1.4rem); cursor:pointer; transition:all 0.2s; text-align:left; }
+.mc-btn:hover { border-color:var(--accent); background:rgba(255,107,53,0.1); }
+.mc-btn.correct { border-color:var(--teal) !important; background:rgba(0,212,170,0.15) !important; color:var(--teal); }
+.mc-btn.wrong { border-color:var(--pink) !important; background:rgba(255,77,158,0.1) !important; }
+.tf-options { display:flex; gap:clamp(0.5rem,2vw,1rem); margin-bottom:1.5rem; }
+.tf-btn { flex:1; padding:clamp(1.2rem,3vw,2.2rem); border:2px solid var(--border); border-radius:16px; background:transparent; color:var(--text); font-family:var(--font-display); font-size:clamp(1.6rem,4vw,2.8rem); cursor:pointer; transition:all 0.2s; }
+.tf-btn:hover { transform:scale(1.03); }
+.tf-btn.correct { border-color:var(--teal); background:rgba(0,212,170,0.15); }
+.tf-btn.wrong { border-color:var(--pink); background:rgba(255,77,158,0.1); }
+.answer-reveal { background:rgba(0,212,170,0.1); border:1px solid var(--teal); border-radius:14px; padding:clamp(0.9rem,2vw,1.5rem); margin-bottom:1.5rem; color:var(--teal); font-weight:700; font-size:clamp(1rem,2vw,1.4rem); display:none; }
+.q-actions { display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.75rem; }
+.q-actions .btn { font-size:clamp(0.95rem,1.8vw,1.2rem); padding:0.85rem 1.75rem; }
+.special-alert { text-align:center; padding:clamp(0.75rem,1.5vw,1.25rem) 1.5rem; border-radius:14px; font-weight:700; margin-bottom:1.25rem; font-family:var(--font-display); font-size:clamp(1.1rem,2.5vw,1.6rem); }
+.special-alert.double { background:rgba(255,227,71,0.15); border:1px solid var(--yellow); color:var(--yellow); }
+.special-alert.steal  { background:rgba(76,201,240,0.15);  border:1px solid var(--blue);   color:var(--blue);   }
+.special-alert.bomb   { background:rgba(255,77,158,0.15);  border:1px solid var(--pink);   color:var(--pink);   }
+.special-alert.swap   { background:rgba(155,93,229,0.15);  border:1px solid var(--purple); color:var(--purple); }
+
+/* ── WINNER SCREEN — all styles inline on element ── */
+.winner-podium { display:flex; align-items:flex-end; justify-content:center; gap:1rem; margin:1.5rem 0; }
+.podium-place { text-align:center; min-width:100px; }
+.podium-block { border-radius:12px 12px 0 0; display:flex; align-items:flex-end; justify-content:center; padding:0.5rem; font-family:var(--font-display); font-size:1.5rem; color:var(--bg); }
+.winner-meme { width:180px; height:180px; object-fit:cover; border-radius:16px; border:3px solid var(--yellow); box-shadow:0 0 30px rgba(255,227,71,0.4); animation:memePop 0.5s cubic-bezier(0.34,1.56,0.64,1) both; margin:0 auto 1rem; display:block; }
+@keyframes memePop { from { transform:scale(0) rotate(-10deg); opacity:0; } to { transform:scale(1) rotate(0deg); opacity:1; } }
+
+/* ── CONFETTI ── */
+.confetti-wrap { position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden; }
+.confetti-piece { position:absolute; width:10px; height:10px; border-radius:2px; animation:confettiFall linear forwards; }
+@keyframes confettiFall { 0% { transform:translateY(-20px) rotate(0deg); opacity:1; } 100% { transform:translateY(110vh) rotate(720deg); opacity:0; } }
+
+/* ── LIGHT THEME ── */
+[data-theme="light"] .play-tile { background:linear-gradient(135deg,#4f46e5,#7c3aed) !important; border-color:rgba(255,255,255,0.3) !important; color:#fff !important; box-shadow:inset 0 1px 0 rgba(255,255,255,0.2); }
+[data-theme="light"] .play-tile:not(.revealed):not(.empty):hover { background:linear-gradient(135deg,#6d28d9,#9333ea) !important; border-color:rgba(255,255,255,0.5) !important; box-shadow:0 6px 20px rgba(109,40,217,0.45),inset 0 1px 0 rgba(255,255,255,0.25) !important; }
+[data-theme="light"] .grid-container { background:rgba(0,0,0,0.06); }
+{% endblock %}
+
+{% block content %}
+
+<!-- ── SETUP SCREEN ───────────────────────────────────────── -->
+<div id="setupScreen">
+    <div class="setup-card">
+        <a href="/dashboard/" style="display:inline-flex;align-items:center;gap:0.4rem;
+            color:var(--text-muted);text-decoration:none;font-weight:700;font-size:0.85rem;
+            margin-bottom:1.25rem;transition:color 0.2s"
+            onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'"
+            data-i18n="play_back">← Back</a>
+        <h1>🎮 {{ game.title }}</h1>
+        <p class="sub" data-i18n="play_setup_sub">Set up your teams before starting</p>
+        <p style="font-size:0.85rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.75rem" data-i18n="play_teams_label">Number of Teams</p>
+        <div class="team-count-btns">
+            <button class="team-count-btn" onclick="setTeamCount(2)">2 <span data-i18n="play_teams_btn">Teams</span></button>
+            <button class="team-count-btn active" onclick="setTeamCount(3)">3 <span data-i18n="play_teams_btn">Teams</span></button>
+            <button class="team-count-btn" onclick="setTeamCount(4)">4 <span data-i18n="play_teams_btn">Teams</span></button>
+        </div>
+        <div class="team-inputs" id="teamInputs"></div>
+        <button class="btn btn-primary" style="width:100%;font-size:1.1rem;padding:0.9rem" onclick="startGame()" data-i18n="play_start">🚀 Start Game!</button>
+    </div>
+</div>
+
+<!-- ── WINNER SCREEN ── -->
+<div id="winnerScreen" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:1rem;">
+    <div style="background:var(--surface);border:2px solid rgba(255,255,255,0.15);border-radius:24px;box-shadow:0 0 0 1px rgba(255,227,71,0.2),0 40px 100px rgba(0,0,0,0.6);padding:2.5rem 2rem 2rem;max-width:580px;width:100%;text-align:center;position:relative;max-height:92vh;overflow-y:auto;">
+        <a href="/dashboard/" style="position:absolute;top:1rem;right:1rem;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text);font-size:1.1rem;display:flex;align-items:center;justify-content:center;text-decoration:none;transition:background 0.2s" onmouseover="this.style.background='var(--pink)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">✕</a>
+        <div style="font-size:3rem;margin-bottom:0.2rem">🏆</div>
+        <h2 style="font-family:var(--font-display);font-size:2.4rem;color:var(--yellow);margin:0 0 0.5rem" data-i18n="play_game_over">Game Over!</h2>
+        <div id="winnerName" style="font-size:1.05rem;color:var(--text-muted);margin-bottom:1.25rem;font-weight:700"></div>
+        <img id="winnerMeme" src="" alt="" style="width:140px;height:140px;object-fit:cover;border-radius:14px;border:3px solid var(--yellow);box-shadow:0 0 24px rgba(255,227,71,0.35);margin:0 auto 1.25rem;display:block" onerror="this.style.display='none'">
+        <div id="winnerPodium" style="display:flex;align-items:flex-end;justify-content:center;gap:0.75rem;margin-bottom:1.5rem"></div>
+        <div style="display:flex;gap:0.75rem">
+            <button class="btn btn-primary" style="flex:1" onclick="location.reload()" data-i18n="play_play_again">🔁 Play Again</button>
+            <a href="/dashboard/" class="btn btn-secondary" style="flex:1" data-i18n="play_back_dash">🏠 Main</a>
+        </div>
+    </div>
+</div>
+
+<!-- ── QUESTION MODAL ── -->
+<div id="questionModal">
+    <div class="q-modal">
+        <button class="q-close" onclick="closeQuestion()" title="Skip this question">✕</button>
+
+        <div id="specialAlert"></div>
+
+        <!-- 1. Question text — big and centred -->
+        <div id="qText" class="q-text"></div>
+
+        <!-- 2. Type badge + points on one line -->
+        <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;margin-bottom:1.1rem">
+            <div id="qTypeBadge" class="q-type-badge" style="margin-bottom:0"></div>
+            <div id="qPoints" class="q-points" style="margin-bottom:0"></div>
+        </div>
+
+        <!-- 3. Optional image -->
+        <div id="qImageWrap" style="display:none;margin-bottom:1.25rem;text-align:center;">
+            <img id="qModalImage"
+                 style="max-width:60%;max-height:40vh;width:auto;height:auto;object-fit:contain;
+                        border-radius:14px;border:1px solid var(--border);
+                        box-shadow:0 4px 20px rgba(0,0,0,0.4);display:inline-block;">
+        </div>
+
+        <!-- 4. Answer area -->
+        <div id="qAnswerArea"></div>
+
+        <!-- 5. Hint -->
+        <div id="qHintArea" style="display:none;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:10px;padding:0.75rem;margin-bottom:1rem;color:var(--text-muted);font-size:0.9rem"></div>
+
+        <!-- 6. Answer reveal -->
+        <div id="answerReveal" class="answer-reveal"></div>
+
+        <!-- 7. Actions row -->
+        <div class="q-actions" id="qActions"></div>
+    </div>
+</div>
+
+<!-- ── MAIN GAME ─────────────────────────────────────────── -->
+<div class="container">
+
+    <!-- Title + controls -->
+    <div class="board-header">
+        <h1 class="game-title">{{ game.title }}</h1>
+        <div style="display:flex;gap:0.5rem">
+            <button class="btn btn-secondary btn-sm" onclick="toggleHints()" data-i18n="play_hint">💡 Hint</button>
+            <button class="btn btn-danger btn-sm" onclick="endGame()" data-i18n="play_end">⏹ End Game</button>
+        </div>
+    </div>
+
+    <!-- Teams bar — z-index 400 keeps it above modal overlay -->
+    <div class="teams-bar" id="teamsBar"></div>
+
+    <!-- Full-width grid -->
+    <div class="grid-container">
+        <div class="play-grid" id="playGrid"></div>
+    </div>
+
+</div>
+
+<script>
+const GAME_ID = {{ game.id }};
+const TEAM_COLORS = ['#FF6B6B','#4CC9F0','#FFE347','#A8E6CF'];
+let session       = null;
+let questions     = {};
+let specialMap    = {};
+let tileMap       = {};   // tileMap[displayPosition] = actualTileNumber
+let currentQuestion = null;
+let timerInterval = null;
+let currentTeamIndex = 0;
+let hintsEnabled  = false;
+
+// Sound settings loaded from server
+let soundSettings = {
+    correct_sound_enabled: true, wrong_sound_enabled: true,
+    winner_fanfare_enabled: true, tile_click_enabled: true, powerup_sound_enabled: true,
+    master_volume: 0.7
+};
+
+// ── SETUP ────────────────────────────────────────────────
+let teamCount = 3;
+function setTeamCount(n) {
+    teamCount = n;
+    document.querySelectorAll('.team-count-btn').forEach((b,i) => b.classList.toggle('active', i+2 === n));
+    renderTeamInputs();
+}
+function renderTeamInputs() {
+    const defaults = ['Team Red','Team Blue','Team Yellow','Team Green'];
+    document.getElementById('teamInputs').innerHTML = Array.from({length:teamCount}, (_, i) => `
+        <div class="team-input-row">
+            <div class="team-dot" style="background:${TEAM_COLORS[i]}"></div>
+            <input class="form-control" id="team${i}" placeholder="${defaults[i]}" value="${defaults[i]}">
+        </div>`).join('');
+}
+
+async function startGame() {
+    // Sync muted state with navbar
+    muted = localStorage.getItem('bbMuted') === 'true';
+
+    // Load sound settings from server
+    try {
+        soundSettings = await apiFetch('/accounts/api/sound-settings/');
+    } catch(e) { /* use defaults */ }
+
+    const teamNames = Array.from({length:teamCount}, (_,i) =>
+        document.getElementById(`team${i}`).value.trim() || `Team ${i+1}`);
+    try {
+        session = await apiFetch(`/api/gameplay/create/${GAME_ID}/`, {
+            method:'POST', body: JSON.stringify({teams: teamNames})
+        });
+        await apiFetch(`/api/gameplay/${session.session_id}/start/`, { method:'POST' });
+
+        const gameData = await apiFetch(`/api/games/${GAME_ID}/`);
+        const allSpecials = gameData.questions
+            .map(q => q.special)
+            .filter(s => s && s !== 'none');
+
+        shuffle(allSpecials);
+        const tileNums = gameData.questions.map(q => q.tile_number);
+        shuffle(tileNums);
+        allSpecials.forEach((sp, idx) => {
+            if (tileNums[idx]) specialMap[tileNums[idx]] = sp;
+        });
+
+        gameData.questions.forEach(q => questions[q.tile_number] = q);
+
+        // Build a shuffled display map: display position → actual tile number
+        const totalCells = {{ game.grid_size }} * {{ game.grid_size }};
+        const allPositions = Array.from({length: totalCells}, (_, i) => i + 1);
+        shuffle(allPositions);
+        // Map each question's tile_number to a random display position
+        const tileNumbers = gameData.questions.map(q => q.tile_number);
+        tileMap = {};
+        tileNumbers.forEach((tNum, idx) => {
+            tileMap[allPositions[idx]] = tNum;
+        });
+
+        document.getElementById('setupScreen').style.display = 'none';
+        renderGrid({{ game.grid_size }});
+        renderTeams();
+        updateTurnIndicator();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+// ── GRID ─────────────────────────────────────────────────
+function renderGrid(gs) {
+    const grid = document.getElementById('playGrid');
+    grid.style.gridTemplateColumns = `repeat(${gs}, 1fr)`;
+    grid.innerHTML = '';
+    for (let displayPos = 1; displayPos <= gs * gs; displayPos++) {
+        const tileNum = tileMap[displayPos]; // actual question tile number
+        const q = tileNum ? questions[tileNum] : null;
+        const div = document.createElement('div');
+        div.className = 'play-tile' + (q ? '' : ' empty');
+        div.id = `tile-${displayPos}`;            // id by display position
+        div.dataset.tileNum = tileNum || '';       // store actual tile number
+        div.textContent = displayPos;              // show display number to players
+        if (q) div.onclick = () => selectTile(displayPos);
+        else div.title = 'No question assigned';
+        grid.appendChild(div);
+    }
+    fitGrid(gs);
+}
+
+function fitGrid(rows) {
+    // Nav is hidden on play page
+    const navH      = 0;
+    const headerH   = document.querySelector('.board-header')?.offsetHeight || 48;
+    const teamsH    = document.querySelector('.teams-bar')?.offsetHeight || 80;
+    const containerPad = 24;
+    const gridPad   = 24;
+    const gaps      = (rows - 1) * 6;
+
+    const available = window.innerHeight - navH - headerH - teamsH - containerPad - gridPad - gaps;
+    const tileH     = Math.max(40, Math.floor(available / rows));
+
+    const playGrid = document.getElementById('playGrid');
+    playGrid.style.setProperty('--tile-h', tileH + 'px');
+    document.querySelectorAll('.play-tile').forEach(t => {
+        t.style.height = tileH + 'px';
+    });
+}
+
+// Re-fit on resize
+window.addEventListener('resize', () => {
+    const gs = {{ game.grid_size }};
+    if (document.querySelector('.play-tile')) fitGrid(gs);
+});
+
+async function selectTile(displayPos) {
+    const tile = document.getElementById(`tile-${displayPos}`);
+    if (tile.classList.contains('revealed')) return;
+    soundTileClick();
+    document.querySelectorAll('.play-tile').forEach(t => t.classList.remove('active-tile'));
+    tile.classList.add('active-tile');
+
+    const tileNum = tileMap[displayPos];
+    if (!tileNum) return;
+
+    try {
+        const data = await apiFetch(`/api/gameplay/${session.session_id}/reveal/`, {
+            method:'POST', body: JSON.stringify({tile_number: tileNum})
+        });
+        currentQuestion = data.question;
+        currentQuestion._displayPos = displayPos; // remember which cell to mark revealed
+        if (currentQuestion) showQuestion(currentQuestion);
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+// ── QUESTION MODAL ───────────────────────────────────────
+function showQuestion(q) {
+    // Position modal below the header + teams bar
+    const headerEl = document.querySelector('.board-header');
+    const teamsEl  = document.querySelector('.teams-bar');
+    const headerBottom = headerEl ? (headerEl.getBoundingClientRect().bottom) : 60;
+    const teamsBottom  = teamsEl  ? (teamsEl.getBoundingClientRect().bottom)  : headerBottom + 90;
+    const topOffset = Math.round(teamsBottom) + 8; // 8px gap below teams bar
+    document.documentElement.style.setProperty('--modal-top', topOffset + 'px');
+
+    document.getElementById('questionModal').classList.add('open');
+
+    // Special alert
+    const alertEl = document.getElementById('specialAlert');
+    const msgs = {
+        double_points: '🌟 DOUBLE POINTS TILE!',
+        steal:         '💸 STEAL POINTS TILE!',
+        bomb:          '💣 BOMB TILE — Remove opponent points!',
+        swap:          '🔀 SWAP TILE — Swap scores with any team!',
+    };
+    if (q.special && q.special !== 'none') {
+        const alertClass = { double_points:'double', steal:'steal', bomb:'bomb', swap:'swap' }[q.special] || q.special;
+        alertEl.className = `special-alert ${alertClass}`;
+        alertEl.textContent = msgs[q.special] || q.special;
+        alertEl.style.display = 'block';
+    } else {
+        alertEl.style.display = 'none';
+    }
+
+    // Type badge + points (inline row under the question)
+    const typeLabels = {
+        text:            t('play_q_text'),
+        multiple_choice: t('play_q_multiple'),
+        true_false:      t('play_q_truefalse'),
+    };
+    const typeStyles = {
+        text:            'background:rgba(155,93,229,0.2);color:#9b5de5',
+        multiple_choice: 'background:rgba(76,201,240,0.2);color:#4cc9f0',
+        true_false:      'background:rgba(255,227,71,0.2);color:#ffe347',
+    };
+    const badge = document.getElementById('qTypeBadge');
+    badge.style.cssText = typeStyles[q.question_type];
+    badge.textContent   = typeLabels[q.question_type];
+
+    document.getElementById('qPoints').textContent =
+        `💰 ${q.points} pts${q.special === 'double_points' ? ' × 2 = ' + (q.points * 2) : ''}`;
+
+    // Question text — set first so it reads naturally top-to-bottom
+    document.getElementById('qText').textContent = q.question_text;
+
+    // Image
+    const imgWrap = document.getElementById('qImageWrap');
+    const imgEl   = document.getElementById('qModalImage');
+    if (q.image_src) {
+        imgEl.src = q.image_src;
+        imgWrap.style.display = 'block';
+        imgEl.onerror = () => { imgWrap.style.display = 'none'; };
+    } else {
+        imgWrap.style.display = 'none';
+        imgEl.src = '';
+    }
+
+    // Answer area
+    const area = document.getElementById('qAnswerArea');
+    document.getElementById('answerReveal').style.display = 'none';
+    if (q.question_type === 'multiple_choice') {
+        const opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
+        shuffle(opts); // randomize order each time
+        area.innerHTML = `<div class="mc-options">${opts.map(o =>
+            `<button class="mc-btn" onclick="checkMC(this,'${o.replace(/'/g,"\\'")}','${q.correct_answer.replace(/'/g,"\\'")}')">${o}</button>`
+        ).join('')}</div>`;
+    } else if (q.question_type === 'true_false') {
+        area.innerHTML = `<div class="tf-options">
+            <button class="tf-btn" onclick="checkTF(this,'True','${q.correct_answer}')">${t('play_tf_true')}</button>
+            <button class="tf-btn" onclick="checkTF(this,'False','${q.correct_answer}')">${t('play_tf_false')}</button>
+        </div>`;
+    } else {
+        // Text Q&A — teacher judges correct/wrong directly
+        area.innerHTML = `
+            <div style="margin-bottom:1.25rem;padding:1rem;background:var(--input-bg);border:1px solid var(--border);border-radius:12px;">
+                <div style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:0.5rem" data-i18n="play_open_q">Open Question — Teacher Judges</div>
+                <div style="font-size:1rem;color:var(--text)" data-i18n="play_open_q_sub">Listen to the team's answer, then mark it:</div>
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem">
+                <button class="btn btn-teal" style="flex:1;font-size:1.1rem;padding:1rem" onclick="textCorrect()" data-i18n="play_correct_btn">✅ Correct!</button>
+                <button class="btn btn-danger" style="flex:1;font-size:1.1rem;padding:1rem" onclick="textWrong()" data-i18n="play_wrong_btn">❌ Wrong!</button>
+            </div>`;
+    }
+
+    // Hint
+    const hintArea = document.getElementById('qHintArea');
+    hintArea.style.display = 'none';
+    if (q.hint) hintArea.innerHTML = `💡 <strong>Hint:</strong> ${q.hint}`;
+
+    // Actions
+    document.getElementById('qActions').innerHTML = `
+        <button class="btn btn-teal" onclick="revealAnswer()">${t('play_reveal')}</button>
+        ${q.hint ? `<button class="btn btn-secondary btn-sm" onclick="document.getElementById('qHintArea').style.display='block'">${t('play_hint')}</button>` : ''}
+    `;
+
+    // timer removed
+}
+
+// Text Q correct/wrong buttons
+function textCorrect() {
+    document.querySelectorAll('#qAnswerArea button').forEach(b => b.disabled = true);
+    soundCorrect();
+    showAnswerActions(true);
+}
+function textWrong() {
+    document.querySelectorAll('#qAnswerArea button').forEach(b => b.disabled = true);
+    soundWrong();
+    showAnswerActions(false);
+}
+
+function checkMC(btn, choice, correct) {
+    document.querySelectorAll('.mc-btn').forEach(b => b.disabled = true);
+    if (choice === correct) { btn.classList.add('correct'); soundCorrect(); }
+    else {
+        btn.classList.add('wrong'); soundWrong();
+        document.querySelectorAll('.mc-btn').forEach(b => {
+            if (b.textContent.trim() === correct) b.classList.add('correct');
+        });
+    }
+    stopTimer();
+    showAnswerActions(choice === correct);
+}
+
+function checkTF(btn, choice, correct) {
+    document.querySelectorAll('.tf-btn').forEach(b => b.disabled = true);
+    if (choice === correct) { btn.classList.add('correct'); soundCorrect(); }
+    else {
+        btn.classList.add('wrong'); soundWrong();
+        document.querySelectorAll('.tf-btn').forEach(b => {
+            if ((b.textContent.includes('True') && correct === 'True') ||
+                (b.textContent.includes('False') && correct === 'False')) b.classList.add('correct');
+        });
+    }
+    stopTimer();
+    showAnswerActions(choice === correct);
+}
+
+function revealAnswer() {
+    const el = document.getElementById('answerReveal');
+    el.style.display = 'block';
+    el.textContent = `${t('play_correct_answer')} ${currentQuestion.correct_answer}`;
+    stopTimer();
+    showAnswerActions(null);
+}
+
+function showAnswerActions(correct) {
+    const teams   = session.teams;
+    const special = currentQuestion.special;
+    const pts     = currentQuestion.points * (special === 'double_points' ? 2 : 1);
+    let html      = '';
+
+    if (correct === true) {
+        html += `<button class="btn btn-teal" onclick="awardCurrentTeam(${pts})">${t('play_award')} ${pts} ${t('play_pts_to')} ${teams[currentTeamIndex]?.name}</button>`;
+        // Power-ups only activate on correct answer
+        if (special && special !== 'none') {
+            soundPowerUp(special);
+            if (special === 'steal') {
+                const stealTargets = teams.filter(tm =>
+                    tm.id !== teams[currentTeamIndex]?.id && tm.score > 0
+                );
+                if (stealTargets.length) {
+                    html += stealTargets.map(tm =>
+                        `<button class="btn btn-secondary btn-sm" onclick="stealPoints(${tm.id},${pts})">${t('play_steal_from')} ${tm.name} (${tm.score})</button>`
+                    ).join('');
+                } else {
+                    html += `<span style="color:var(--text-muted);font-size:0.9rem">${t('play_no_steal')}</span>`;
+                }
+            }
+            if (special === 'bomb') {
+                html += teams.map(tm => tm.id !== teams[currentTeamIndex]?.id
+                    ? `<button class="btn btn-danger btn-sm" onclick="bombTeam(${tm.id},${pts})">${t('play_bomb')} ${tm.name}</button>`
+                    : '').join('');
+            }
+            if (special === 'swap') {
+                const swapTargets = teams.filter(tm => tm.id !== teams[currentTeamIndex]?.id);
+                html += swapTargets.map(tm =>
+                    `<button class="btn btn-sm" style="background:rgba(155,93,229,0.2);border:1px solid var(--purple);color:var(--purple)" onclick="swapScores(${tm.id})">🔀 ${t('play_swap_with')} ${tm.name} (${tm.score})</button>`
+                ).join('');
+            }
+        }
+    } else if (correct === false) {
+        html += `<span style="color:var(--pink);font-weight:700;font-size:1.1rem">${t('play_incorrect')}</span>`;
+    } else {
+        // null = manual reveal — offer manual award
+        html += `<button class="btn btn-teal" onclick="awardCurrentTeam(${pts})">✅ Award ${pts}pts to ${teams[currentTeamIndex]?.name}</button>`;
+    }
+
+    html += `<button class="btn btn-secondary" onclick="closeQuestion()">${t('play_next')}</button>`;
+    document.getElementById('qActions').innerHTML = html;
+}
+
+async function awardCurrentTeam(pts) {
+    await awardPoints(session.teams[currentTeamIndex].id, pts, 'add');
+    closeQuestion();
+}
+async function stealPoints(fromTeamId, pts) {
+    await awardPoints(fromTeamId, pts, 'subtract');
+    await awardPoints(session.teams[currentTeamIndex].id, pts, 'add');
+    closeQuestion();
+}
+async function bombTeam(teamId, pts) {
+    await awardPoints(teamId, pts, 'subtract');
+    closeQuestion();
+}
+async function swapScores(targetTeamId) {
+    const myTeam  = session.teams[currentTeamIndex];
+    const target  = session.teams.find(t => t.id === targetTeamId);
+    if (!myTeam || !target) return closeQuestion();
+    const myScore  = myTeam.score;
+    const hisScore = target.score;
+    // Set my score to target's score, target's score to mine
+    try {
+        await apiFetch(`/api/gameplay/${session.session_id}/award/`, {
+            method:'POST', body: JSON.stringify({team_id: myTeam.id, points: hisScore, action: 'set'})
+        });
+        const data = await apiFetch(`/api/gameplay/${session.session_id}/award/`, {
+            method:'POST', body: JSON.stringify({team_id: targetTeamId, points: myScore, action: 'set'})
+        });
+        session.teams = data.teams;
+        renderTeams();
+        showToast(`🔀 Swapped scores with ${target.name}!`);
+    } catch(e) { showToast(e.message, 'error'); }
+    closeQuestion();
+}
+async function awardPoints(teamId, pts, action) {
+    try {
+        const data = await apiFetch(`/api/gameplay/${session.session_id}/award/`, {
+            method:'POST', body: JSON.stringify({team_id: teamId, points: pts, action})
+        });
+        session.teams = data.teams;
+        renderTeams();
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+function closeQuestion() {
+    document.getElementById('questionModal').classList.remove('open');
+    stopTimer();
+    const displayPos = currentQuestion._displayPos;
+    const tile = document.getElementById(`tile-${displayPos}`);
+    if (tile) { tile.classList.add('revealed'); tile.classList.remove('active-tile'); }
+    currentTeamIndex = (currentTeamIndex + 1) % session.teams.length;
+    updateTurnIndicator();
+    renderTeams();
+    checkGameOver();
+}
+
+function checkGameOver() {
+    const total    = document.querySelectorAll('.play-tile:not(.empty)').length;
+    const revealed = document.querySelectorAll('.play-tile.revealed').length;
+    if (total > 0 && revealed >= total) setTimeout(showWinner, 500);
+}
+
+// ── TIMER (removed) ──────────────────────────────────────
+function startTimer(seconds) { /* timer removed */ }
+function stopTimer() { clearInterval(timerInterval); }
+
+// ═══════════════════════════════════════════════════════════
+// 🔊  SOUND ENGINE  (Web Audio API — zero external deps)
+// ═══════════════════════════════════════════════════════════
+let audioCtx = null;
+let bgGain   = null;
+let bgNodes  = [];
+let muted    = false;
+
+function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+}
+
+function canPlay(key) {
+    return !muted && soundSettings[key] !== false;
+}
+
+function masterVol() {
+    return soundSettings.master_volume ?? 0.7;
+}
+
+function toggleMute() {
+    muted = !muted;
+    // bg music removed
+}
+
+// ── Helpers ──────────────────────────────────────────────
+function playTone(freq, type, vol, start, dur, dest) {
+    const ctx = getCtx();
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    g.gain.setValueAtTime(vol * masterVol(), start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g); g.connect(dest || ctx.destination);
+    osc.start(start); osc.stop(start + dur);
+}
+
+function playNoise(vol, start, dur, dest) {
+    const ctx    = getCtx();
+    const buf    = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    const src  = ctx.createBufferSource();
+    const filt = ctx.createBiquadFilter();
+    const g    = ctx.createGain();
+    filt.type = 'bandpass'; filt.frequency.value = 300;
+    src.buffer = buf;
+    g.gain.setValueAtTime(vol * masterVol(), start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    src.connect(filt); filt.connect(g); g.connect(dest || ctx.destination);
+    src.start(start); src.stop(start + dur);
+}
+
+// Background music removed
+
+// ── 2. Tile click ─────────────────────────────────────────
+function soundTileClick() {
+    if (!canPlay('tile_click_enabled')) return;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    playTone(520, 'sine', 0.18, t, 0.08);
+    playTone(780, 'sine', 0.12, t + 0.05, 0.06);
+}
+
+// ── 3. Correct answer ─────────────────────────────────────
+function soundCorrect() {
+    if (!canPlay('correct_sound_enabled')) return;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    [[523,0],[659,0.1],[784,0.2],[1047,0.32]].forEach(([f, dt]) => {
+        playTone(f, 'triangle', 0.22, t + dt, 0.45);
+    });
+}
+
+// ── 4. Wrong answer ───────────────────────────────────────
+function soundWrong() {
+    if (!canPlay('wrong_sound_enabled')) return;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(280, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.5);
+    g.gain.setValueAtTime(0.25 * masterVol(), t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.5);
+    playNoise(0.15, t, 0.12);
+}
+
+// ── 5. Power-up reveal ────────────────────────────────────
+function soundPowerUp(type) {
+    if (!canPlay('powerup_sound_enabled')) return;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    if (type === 'double_points') {
+        // Rising sparkle
+        [660, 880, 1100, 1320].forEach((f, i) =>
+            playTone(f, 'sine', 0.2, t + i * 0.07, 0.3));
+    } else if (type === 'steal') {
+        // Sneaky descend
+        const osc = ctx.createOscillator();
+        const g   = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, t);
+        osc.frequency.linearRampToValueAtTime(200, t + 0.4);
+        g.gain.setValueAtTime(0.2 * masterVol(), t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(t); osc.stop(t + 0.5);
+    } else if (type === 'bomb') {
+        // Explosion thud
+        playNoise(0.3, t, 0.1);
+        playNoise(0.2, t + 0.1, 0.2);
+        playTone(80, 'sine', 0.3, t, 0.35);
+    } else if (type === 'swap') {
+        // Quirky ping-pong: two notes trading places
+        playTone(440, 'sine', 0.2, t, 0.18);
+        playTone(660, 'sine', 0.2, t + 0.2, 0.18);
+        playTone(660, 'sine', 0.15, t + 0.42, 0.18);
+        playTone(440, 'sine', 0.15, t + 0.62, 0.18);
+    }
+}
+
+// ── 6. Winner fanfare ─────────────────────────────────────
+function soundWinnerFanfare() {
+    if (!canPlay('winner_fanfare_enabled')) return;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const melody = [
+        [261,0,0.2],[329,0.2,0.2],[392,0.4,0.2],
+        [523,0.65,0.15],[523,0.85,0.15],[523,1.05,0.4],[659,1.5,0.6]
+    ];
+    melody.forEach(([f, dt, dur]) => {
+        playTone(f,     'sawtooth', 0.28, t+dt, dur);
+        playTone(f*1.5, 'square',   0.08, t+dt, dur);
+    });
+    [0, 0.2, 0.4, 0.65, 0.85, 1.05].forEach(dt => playNoise(0.12, t+dt, 0.08));
+}
+
+// ── 7. Funny win jingle ───────────────────────────────────
+function soundFunnyWin() {
+    if (!canPlay('winner_fanfare_enabled')) return;
+    const ctx = getCtx(); const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const g   = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(2000, t + 0.8);
+    osc.frequency.exponentialRampToValueAtTime(800, t + 1.1);
+    g.gain.setValueAtTime(0.15 * masterVol(), t);
+    g.gain.setValueAtTime(0.15 * masterVol(), t + 0.8);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 1.4);
+    playNoise(0.2, t + 1.1, 0.25);
+    playTone(200, 'sine', 0.2, t + 1.1, 0.2);
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🎉  CONFETTI
+// ═══════════════════════════════════════════════════════════
+const CONFETTI_COLORS = ['#FF6B6B','#4CC9F0','#FFE347','#A8E6CF','#FF6B35','#9b5de5','#ff4d9e'];
+let _confettiTimer = null;
+function launchConfetti() {
+    if (_confettiTimer) return; // already running
+    const wrap = document.getElementById('confettiWrap');
+    const COLORS = typeof CONFETTI_COLORS !== 'undefined' ? CONFETTI_COLORS :
+        ['#FF6B6B','#4CC9F0','#FFE347','#A8E6CF','#FF4D9E','#9B5DE5','#F8961E'];
+
+    function spawnBatch() {
+        // Add 30 new pieces each wave
+        for (let i = 0; i < 30; i++) {
+            const el = document.createElement('div');
+            el.className = 'confetti-piece';
+            const size = 6 + Math.random() * 10;
+            const dur  = 2.5 + Math.random() * 2;
+            el.style.cssText = `
+                left:${Math.random()*100}%;
+                top:-20px;
+                width:${size}px;height:${size}px;
+                background:${COLORS[Math.floor(Math.random()*COLORS.length)]};
+                animation-duration:${dur}s;
+                animation-delay:0s;
+                border-radius:${Math.random()>0.5?'50%':'2px'};
+                opacity:${0.7+Math.random()*0.3};
+            `;
+            wrap.appendChild(el);
+            // Remove this piece after its animation ends
+            setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, dur * 1000 + 200);
+        }
+    }
+
+    spawnBatch(); // immediate first wave
+    _confettiTimer = setInterval(spawnBatch, 600); // new wave every 600ms
+}
+
+function stopConfetti() {
+    if (_confettiTimer) { clearInterval(_confettiTimer); _confettiTimer = null; }
+    const wrap = document.getElementById('confettiWrap');
+    if (wrap) wrap.innerHTML = '';
+}
+
+// ── TEAMS BAR ────────────────────────────────────────────
+function renderTeams() {
+    const bar = document.getElementById('teamsBar');
+    bar.innerHTML = session.teams.map((t, i) => `
+        <div class="team-chip ${i === currentTeamIndex ? 'active-team' : ''}"
+             id="teamChip-${t.id}"
+             style="--chip-color:${TEAM_COLORS[i]}">
+            <div class="chip-name">
+                <span style="width:8px;height:8px;border-radius:50%;background:${TEAM_COLORS[i]};display:inline-block;flex-shrink:0"></span>
+                ${i === currentTeamIndex ? '🎯 ' : ''}${t.name}
+            </div>
+            <div class="chip-score">${t.score}</div>
+
+        </div>`).join('');
+}
+
+async function quickAward(teamId, pts) {
+    await awardPoints(teamId, Math.abs(pts), pts > 0 ? 'add' : 'subtract');
+}
+
+function updateTurnIndicator() {
+    // turn indicator element removed; active team shown in teams bar
+}
+
+function onLangChange(lang) {
+    // Re-render current question area text if a question is open
+    if (currentQuestion && document.getElementById('questionModal').classList.contains('open')) {
+        showQuestion(currentQuestion);
+    }
+}
+
+// ── WINNER ───────────────────────────────────────────────
+// Funny classroom-safe meme images (stable public URLs)
+const WINNER_MEMES = [
+    'https://media.giphy.com/media/artj92V8o75VPL7AeQ/giphy.gif',   // minion celebration
+    'https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif',   // happy dance
+    'https://media.giphy.com/media/3oEjHWpiVIOGXT5l9u/giphy.gif',   // kermit flail
+    'https://media.giphy.com/media/26gsspfbt1HfKNNfy/giphy.gif',   // baby dancing
+    'https://media.giphy.com/media/5GoVLqeAOo6PK/giphy.gif',       // cat victory
+    'https://media.giphy.com/media/QBC5foibyrMJZMQmZa/giphy.gif',  // celebration fireworks
+];
+
+async function endGame() {
+    try {
+        if (session) await apiFetch(`/api/gameplay/${session.session_id}/end/`, { method:'POST' });
+    } catch(e) { /* ignore */ }
+    location.href = '/dashboard/';
+}
+
+function showWinner() {
+    const ws = document.getElementById('winnerScreen');
+    ws.style.display = 'flex';
+    ws.style.alignItems = 'center';
+    ws.style.justifyContent = 'center';
+
+    document.getElementById('questionModal').classList.remove('open');
+
+    try { soundWinnerFanfare(); } catch(e) {}
+    try { setTimeout(() => { try { soundFunnyWin(); } catch(e) {} }, 1600); } catch(e) {}
+    try { launchConfetti(); } catch(e) {}
+
+    try {
+        const teams = (session && session.teams) ? session.teams : [];
+        const sorted = [...teams].sort((a,b) => (b.score||0) - (a.score||0));
+
+        // Winner name
+        const nameEl = document.getElementById('winnerName');
+        if (sorted.length > 0) {
+            nameEl.textContent = `🏆 ${sorted[0].name} ${t('play_wins_with')} ${sorted[0].score} ${t('play_points')}!`;
+        } else {
+            nameEl.textContent = t('play_game_over');
+        }
+
+        // Meme
+        const memeEl = document.getElementById('winnerMeme');
+        memeEl.style.display = 'block';
+        memeEl.src = WINNER_MEMES[Math.floor(Math.random() * WINNER_MEMES.length)];
+
+        // Scores list (always visible, simple, never crashes)
+        const podiumEl = document.getElementById('winnerPodium');
+        if (sorted.length === 0) {
+            podiumEl.innerHTML = '<p style="color:var(--text-muted)">No scores recorded.</p>';
+        } else {
+            const medals = ['🥇','🥈','🥉','4️⃣'];
+            // Simple clear scores table — no fancy podium that can mis-render
+            podiumEl.innerHTML = `
+              <div style="width:100%;display:flex;flex-direction:column;gap:0.6rem">
+                ${sorted.map((t, i) => `
+                  <div style="display:flex;align-items:center;gap:0.75rem;padding:0.75rem 1rem;
+                               background:${i===0?'rgba(255,227,71,0.12)':'rgba(255,255,255,0.05)'};
+                               border:1px solid ${i===0?'rgba(255,227,71,0.4)':'rgba(255,255,255,0.08)'};
+                               border-radius:12px;">
+                    <span style="font-size:1.6rem">${medals[i]||`#${i+1}`}</span>
+                    <span style="flex:1;font-family:var(--font-display);font-size:1.15rem;
+                                 color:${TEAM_COLORS[teams.indexOf(t)]||'#fff'}">${t.name}</span>
+                    <span style="font-family:var(--font-display);font-size:1.5rem;font-weight:900;
+                                 color:${TEAM_COLORS[teams.indexOf(t)]||'#fff'}">${t.score}</span>
+                  </div>`).join('')}
+              </div>`;
+        }
+    } catch(e) {
+        // Last resort fallback — never show a blank winner screen
+        document.getElementById('winnerName').textContent = '🏆 Game Over!';
+        document.getElementById('winnerPodium').innerHTML =
+            `<p style="color:var(--text-muted);font-size:0.9rem">Could not load scores. Check console.</p>`;
+        console.error('showWinner error:', e);
+    }
+}
+
+// ── HINTS ────────────────────────────────────────────────
+function toggleHints() {
+    hintsEnabled = !hintsEnabled;
+    showToast(hintsEnabled ? 'Hints ON' : 'Hints OFF');
+}
+
+// ── UTILS ────────────────────────────────────────────────
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+// Init setup screen
+renderTeamInputs();
+setTeamCount(3);
+</script>
+{% endblock %}

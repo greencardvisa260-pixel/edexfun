@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" data-lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EdexFun – Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Boogaloo&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root, [data-theme="dark"] {
+            --bg: #0f0e17; --surface: #1a1a2e; --accent: #ff6b35; --yellow: #ffe347;
+            --teal: #00d4aa; --text: #fffffe; --text-muted: #a7a9be;
+            --border: rgba(255,255,255,0.08);
+            --font-display: 'Boogaloo', cursive; --font-body: 'Nunito', sans-serif;
+        }
+        [data-theme="light"] {
+            --bg: #f5f5f0; --surface: #ffffff; --accent: #e85d1a; --yellow: #c8960c;
+            --teal: #008f73; --text: #1a1a2e; --text-muted: #5a5c72;
+            --border: rgba(0,0,0,0.1);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: var(--font-body); min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            background-image:
+                radial-gradient(ellipse at 10% 20%, rgba(155,93,229,0.2) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(255,107,53,0.2) 0%, transparent 50%);
+        }
+        .login-wrap { width: 100%; max-width: 440px; padding: 1.5rem; }
+        .logo {
+            font-family: var(--font-display);
+            font-size: 3rem; text-align: center;
+            color: var(--accent); margin-bottom: 0.25rem;
+            text-shadow: 0 0 30px rgba(255,107,53,0.5);
+        }
+        .logo span { color: var(--yellow); }
+        .tagline { text-align: center; color: var(--text-muted); margin-bottom: 2.5rem; font-weight: 600; }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px; padding: 2rem;
+        }
+        h2 { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.2rem; }
+        label {
+            display: block; font-weight: 700; font-size: 0.8rem;
+            color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.5px; margin-bottom: 0.4rem;
+        }
+        input {
+            width: 100%; background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border); border-radius: 10px;
+            padding: 0.7rem 1rem; color: var(--text);
+            font-family: var(--font-body); font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        input:focus { outline: none; border-color: var(--accent); background: rgba(255,107,53,0.05); }
+        .btn {
+            width: 100%; padding: 0.8rem;
+            background: var(--accent); color: white;
+            border: none; border-radius: 12px;
+            font-family: var(--font-body); font-size: 1.05rem; font-weight: 800;
+            cursor: pointer; letter-spacing: 0.5px;
+            transition: all 0.2s; margin-top: 0.5rem;
+        }
+        .btn:hover { filter: brightness(1.15); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255,107,53,0.4); }
+        .error {
+            background: rgba(255,77,158,0.15); border: 1px solid rgba(255,77,158,0.4);
+            border-radius: 10px; padding: 0.75rem 1rem;
+            color: #ff4d9e; font-weight: 600; margin-bottom: 1rem; font-size: 0.9rem;
+        }
+        .footer-link { text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .footer-link a { color: var(--teal); text-decoration: none; font-weight: 700; }
+        .footer-link a:hover { text-decoration: underline; }
+        {% csrf_token %}
+    </style>
+</head>
+<body>
+    <div class="login-wrap">
+        <div class="logo">Edex<span>Fun</span> 🎯</div>
+        <p class="tagline" data-i18n="login_tagline">The classroom quiz game teachers love</p>
+        <div class="card">
+            <h2 data-i18n="login_title">👋 Welcome back!</h2>
+            {% if error %}<div class="error">{{ error }}</div>{% endif %}
+            <form method="post" action="/accounts/login/">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label data-i18n="login_username">Username</label>
+                    <input type="text" name="username" placeholder="Enter your username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label data-i18n="login_password">Password</label>
+                    <input type="password" name="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn" data-i18n="login_btn">Sign In 🚀</button>
+            </form>
+        </div>
+        <p class="footer-link"><span data-i18n="login_no_acct">New teacher?</span> <a href="/accounts/register/" data-i18n="login_create">Create an account →</a></p>
+    </div>
+
+    <script>
+    (function() {
+        // Inline i18n for standalone pages (no base.html)
+        const TRANS = {
+            en: { login_tagline: 'The classroom quiz game teachers love', login_title: '👋 Welcome back!', login_username: 'Username', login_password: 'Password', login_btn: 'Sign In 🚀', login_no_acct: 'New teacher?', login_create: 'Create an account →' },
+            ru: { login_tagline: 'Любимая викторина для класса', login_title: '👋 С возвращением!', login_username: 'Имя пользователя', login_password: 'Пароль', login_btn: 'Войти 🚀', login_no_acct: 'Новый учитель?', login_create: 'Создать аккаунт →' }
+        };
+        const lang = localStorage.getItem('bbLang') || 'en';
+        document.documentElement.setAttribute('data-lang', lang);
+        document.documentElement.setAttribute('lang', lang);
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            const val = (TRANS[lang] && TRANS[lang][key]) || (TRANS['en'][key]) || key;
+            el.innerHTML = val;
+        });
+        // Theme
+        const theme = localStorage.getItem('bbTheme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+    })();
+    </script>
+</body>
+</html>

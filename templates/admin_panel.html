@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+{% block title %}Admin Panel – EdexFun{% endblock %}
+
+{% block extra_styles %}
+.page-header { padding: 1.5rem 0 1rem; }
+.page-header h1 { font-family: var(--font-display); font-size: 2rem; }
+.tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; flex-wrap: wrap; }
+.tab-btn { padding: 0.5rem 1.2rem; border: none; background: transparent; color: var(--text-muted); font-family: var(--font-body); font-weight: 700; font-size: 0.9rem; cursor: pointer; border-radius: 8px 8px 0 0; transition: all 0.2s; }
+.tab-btn.active { color: var(--accent); border-bottom: 2px solid var(--accent); background: rgba(255,107,53,0.08); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; text-align: center; }
+.stat-card .stat-val { font-family: var(--font-display); font-size: 2.2rem; color: var(--accent); line-height: 1; }
+.stat-card .stat-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-top: 0.35rem; }
+.stat-card.warn .stat-val { color: var(--yellow); }
+.stat-card.good .stat-val { color: var(--teal); }
+.stat-card.info .stat-val { color: var(--blue); }
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { text-align: left; padding: 0.65rem 0.85rem; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table td { padding: 0.65rem 0.85rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: rgba(255,255,255,0.02); }
+.sound-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.sound-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.sound-row .label { font-weight: 700; font-size: 0.95rem; }
+.sound-row .desc  { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.1rem; }
+.toggle { position: relative; display: inline-block; width: 46px; height: 24px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; cursor: pointer; background: var(--border); border-radius: 24px; transition: 0.3s; border: 1px solid rgba(255,255,255,0.1); }
+.toggle-slider:before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: var(--text-muted); border-radius: 50%; transition: 0.3s; }
+.toggle input:checked + .toggle-slider { background: var(--teal); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(22px); background: white; }
+.volume-row { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; grid-column: 1 / -1; }
+input[type="range"] { flex: 1; accent-color: var(--accent); height: 6px; cursor: pointer; }
+.teacher-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 1rem; }
+.teacher-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.25rem; display: flex; flex-direction: column; gap: 0.85rem; }
+.teacher-card.pending { border-color: rgba(255,227,71,0.35); }
+.avatar { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; background: linear-gradient(135deg, var(--accent), var(--yellow)); display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 1.3rem; color: var(--bg); }
+.teacher-info { flex: 1; }
+.teacher-info h3 { font-family: var(--font-display); font-size: 1.05rem; margin-bottom: 0.15rem; }
+.teacher-info .meta { font-size: 0.8rem; color: var(--text-muted); line-height: 1.6; }
+.pill-row { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.18rem 0.55rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; }
+.pill-public  { background: rgba(0,212,170,0.15);  color: var(--teal); }
+.pill-private { background: rgba(167,169,190,0.15); color: var(--text-muted); }
+.pill-sessions{ background: rgba(76,201,240,0.15);  color: var(--blue); }
+.game-rank { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+.game-rank:last-child { border-bottom: none; }
+.rank-num { font-family: var(--font-display); font-size: 1.5rem; color: var(--text-muted); width: 32px; text-align: center; flex-shrink: 0; }
+.rank-bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.rank-bar-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--yellow)); transition: width 0.8s ease; }
+.rank-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+/* Delete modal */
+.del-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.del-overlay.hidden { display: none; }
+.del-modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; width: 100%; max-width: 480px; animation: popIn 0.2s ease; }
+.del-modal h3 { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--pink); }
+/* Branding */
+.brand-preview { padding: 1rem 1.5rem; background: var(--nav-bg); border: 1px solid var(--border); border-radius: 12px; display: inline-flex; align-items: center; font-family: var(--font-display); font-size: 1.7rem; color: var(--accent); letter-spacing: 1px; margin-bottom: 1.5rem; }
+.brand-preview span { color: var(--yellow); }
+.meme-sources { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px,1fr)); gap: 0.75rem; margin-top: 1rem; }
+.meme-src { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.meme-src .mname { font-weight: 700; font-size: 0.88rem; }
+.meme-src .mfmt  { font-size: 0.72rem; color: var(--text-muted); }
+.meme-src a { color: var(--teal); font-weight: 700; font-size: 0.85rem; text-decoration: none; white-space: nowrap; }
+.meme-src a:hover { text-decoration: underline; }
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <h1 data-i18n="adm_title">⚙️ Admin Panel</h1>
+        <p style="color:var(--text-muted);font-weight:600;margin-top:0.25rem" data-i18n="adm_subtitle">Manage teachers, monitor usage, configure sounds</p>
+    </div>
+
+    <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('stats')"    data-i18n="adm_tab_stats">📊 Stats</button>
+        <button class="tab-btn"        onclick="switchTab('teachers')" data-i18n="adm_tab_teachers">👥 Teachers</button>
+        <button class="tab-btn"        onclick="switchTab('sounds')"   data-i18n="adm_tab_sounds">🔊 Sounds</button>
+        <button class="tab-btn"        onclick="switchTab('sessions')" data-i18n="adm_tab_sessions">🎮 Sessions</button>
+        <button class="tab-btn"        onclick="switchTab('branding')">🎨 Branding</button>
+    </div>
+
+    <!-- STATS TAB -->
+    <div id="tab-stats" class="tab-panel active">
+        <div class="stats-grid">
+            <div class="stat-card">     <div class="stat-val" id="st-games">…</div>    <div class="stat-label">Total Games</div></div>
+            <div class="stat-card info"><div class="stat-val" id="st-public">…</div>   <div class="stat-label">Public</div></div>
+            <div class="stat-card">     <div class="stat-val" id="st-private">…</div>  <div class="stat-label">Private</div></div>
+            <div class="stat-card good"><div class="stat-val" id="st-teachers">…</div> <div class="stat-label">Teachers</div></div>
+            <div class="stat-card warn"><div class="stat-val" id="st-pending">…</div>  <div class="stat-label">Pending</div></div>
+            <div class="stat-card">     <div class="stat-val" id="st-sessions">…</div> <div class="stat-label">Sessions</div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem" id="chartsRow">
+            <div class="card">
+                <h3 style="font-family:var(--font-display);font-size:1.2rem;margin-bottom:1rem">🏆 Most Played Games</h3>
+                <div id="popularGames"><div style="color:var(--text-muted);font-size:0.9rem">Loading…</div></div>
+            </div>
+            <div class="card">
+                <h3 style="font-family:var(--font-display);font-size:1.2rem;margin-bottom:1rem">🧑‍🏫 Teacher Activity</h3>
+                <div style="overflow-x:auto">
+                    <table class="data-table">
+                        <thead><tr><th>Teacher</th><th>🌍 Public</th><th>🔒 Private</th><th>▶ Sessions</th><th>Status</th></tr></thead>
+                        <tbody id="activityBody"><tr><td colspan="5" style="color:var(--text-muted)">Loading…</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEACHERS TAB -->
+    <div id="tab-teachers" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+            <h2 style="font-family:var(--font-display);font-size:1.4rem" data-i18n="adm_teachers_title">Teacher Accounts</h2>
+            <span class="badge badge-pending" id="pendingBadge" style="display:none"></span>
+        </div>
+        <div class="teacher-grid" id="teacherGrid"><div style="color:var(--text-muted)">Loading…</div></div>
+    </div>
+
+    <!-- SOUNDS TAB (bg music removed) -->
+    <div id="tab-sounds" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.5rem">
+            <h2 style="font-family:var(--font-display);font-size:1.4rem" data-i18n="adm_sounds_title">Sound Configuration</h2>
+            <button class="btn btn-primary btn-sm" onclick="saveSoundSettings()" data-i18n="adm_save_sounds">💾 Save Changes</button>
+        </div>
+        <div class="sound-grid">
+            <div class="sound-row">
+                <div><div class="label" data-i18n="adm_snd_correct">✅ Correct Answer</div><div class="desc" data-i18n="adm_snd_correct_desc">Rising chime when answer is right</div></div>
+                <label class="toggle"><input type="checkbox" id="snd-correct" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="sound-row">
+                <div><div class="label" data-i18n="adm_snd_wrong">❌ Wrong Answer</div><div class="desc" data-i18n="adm_snd_wrong_desc">Descending wah when answer is wrong</div></div>
+                <label class="toggle"><input type="checkbox" id="snd-wrong" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="sound-row">
+                <div><div class="label" data-i18n="adm_snd_fanfare">🏆 Winner Fanfare</div><div class="desc" data-i18n="adm_snd_fanfare_desc">Brass burst on game end</div></div>
+                <label class="toggle"><input type="checkbox" id="snd-fanfare" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="sound-row">
+                <div><div class="label" data-i18n="adm_snd_tile">🖱 Tile Click</div><div class="desc" data-i18n="adm_snd_tile_desc">Soft blip when selecting a tile</div></div>
+                <label class="toggle"><input type="checkbox" id="snd-tile" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="sound-row">
+                <div><div class="label" data-i18n="adm_snd_powerup">⚡ Power-up Sounds</div><div class="desc" data-i18n="adm_snd_powerup_desc">Steal · Bomb · Double Points distinct sounds</div></div>
+                <label class="toggle"><input type="checkbox" id="snd-powerup" checked><span class="toggle-slider"></span></label>
+            </div>
+            <div class="volume-row">
+                <div style="min-width:120px"><div class="label" data-i18n="adm_snd_volume">🔊 Master Volume</div></div>
+                <input type="range" id="snd-volume" min="0" max="100" value="70">
+                <span id="volumeLabel" style="min-width:36px;text-align:right;font-weight:700;color:var(--accent)">70%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- SESSIONS TAB -->
+    <div id="tab-sessions" class="tab-panel">
+        <h2 style="font-family:var(--font-display);font-size:1.4rem;margin-bottom:1rem" data-i18n="adm_sessions_title">Recent Sessions (last 7 days)</h2>
+        <div style="overflow-x:auto">
+            <table class="data-table">
+                <thead><tr><th>#</th><th>Game</th><th>Host</th><th>Status</th><th>Started</th><th>Duration</th></tr></thead>
+                <tbody id="sessionsBody"><tr><td colspan="6" style="color:var(--text-muted)">Loading…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- BRANDING TAB -->
+    <div id="tab-branding" class="tab-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.5rem">
+            <h2 style="font-family:var(--font-display);font-size:1.4rem">🎨 Site Branding</h2>
+            <button class="btn btn-primary btn-sm" onclick="saveBranding()">💾 Save Branding</button>
+        </div>
+        <div style="margin-bottom:1.25rem">
+            <div style="font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:0.5rem">Live Preview</div>
+            <div class="brand-preview" id="brandPreview">Edex<span>Fun</span></div>
+        </div>
+        <div style="margin-bottom:1.25rem">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text-muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.5px">Logo Type</div>
+            <div style="display:flex;gap:1rem">
+                <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;font-weight:700">
+                    <input type="radio" name="logoType" value="text"  id="logoTypeText"  checked style="accent-color:var(--accent)"> Text
+                </label>
+                <label style="display:flex;align-items:center;gap:0.45rem;cursor:pointer;font-weight:700">
+                    <input type="radio" name="logoType" value="image" id="logoTypeImage" style="accent-color:var(--accent)"> Image URL
+                </label>
+            </div>
+        </div>
+        <div id="brandTextSection" style="margin-bottom:1.5rem">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text-muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.5px">Logo Text</div>
+            <input type="text" id="logoText" value="EdexFun" maxlength="40" class="form-control" style="max-width:320px" placeholder="e.g. KyrgyzQuiz" oninput="updateBrandPreview()">
+            <p style="color:var(--text-muted);font-size:0.78rem;margin-top:0.35rem">First half shown in orange, second half in yellow.</p>
+        </div>
+        <div id="brandImageSection" style="margin-bottom:1.5rem;display:none">
+            <div style="font-size:0.82rem;font-weight:700;color:var(--text-muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.5px">Logo Image URL</div>
+            <input type="url" id="logoImageUrl" class="form-control" style="max-width:480px" placeholder="https://example.com/logo.webp" oninput="updateBrandPreview()">
+            <p style="color:var(--text-muted);font-size:0.78rem;margin-top:0.35rem">Use <strong>WebP</strong> for smallest size. Ideal: transparent background, ~40px tall.</p>
+        </div>
+        <!-- Game card image sources -->
+        <div style="margin-top:2rem;border-top:1px solid var(--border);padding-top:1.5rem">
+            <h3 style="font-family:var(--font-display);font-size:1.15rem;margin-bottom:0.35rem">🖼 Game Cover Image Sources</h3>
+            <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem">
+                Cover images should be <strong>WebP or JPEG</strong>, around <strong>400×200 px</strong>, under <strong>50 KB</strong>.
+                Right-click any image → <em>Copy image address</em>, then paste the URL when editing a game.
+            </p>
+            <div class="meme-sources">
+                <div class="meme-src"><div><div class="mname">Tenor</div><div class="mfmt">WebP GIFs · Free</div></div><a href="https://tenor.com" target="_blank" rel="noopener">Open ↗</a></div>
+                <div class="meme-src"><div><div class="mname">Giphy</div><div class="mfmt">GIF / WebP · Free</div></div><a href="https://giphy.com" target="_blank" rel="noopener">Open ↗</a></div>
+                <div class="meme-src"><div><div class="mname">Know Your Meme</div><div class="mfmt">JPEG / WebP · Free</div></div><a href="https://knowyourmeme.com" target="_blank" rel="noopener">Open ↗</a></div>
+                <div class="meme-src"><div><div class="mname">ImgFlip Meme Gen</div><div class="mfmt">JPEG · Free</div></div><a href="https://imgflip.com/memegenerator" target="_blank" rel="noopener">Open ↗</a></div>
+                <div class="meme-src"><div><div class="mname">Pixabay</div><div class="mfmt">WebP / JPEG · Free</div></div><a href="https://pixabay.com" target="_blank" rel="noopener">Open ↗</a></div>
+                <div class="meme-src"><div><div class="mname">Unsplash</div><div class="mfmt">JPEG · Free</div></div><a href="https://unsplash.com" target="_blank" rel="noopener">Open ↗</a></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE TEACHER MODAL -->
+<div class="del-overlay hidden" id="deleteModal">
+    <div class="del-modal">
+        <h3>🗑 Delete Teacher?</h3>
+        <p id="deleteModalMsg" style="color:var(--text-muted);margin-bottom:1.25rem;line-height:1.6"></p>
+        <div style="background:rgba(255,107,53,0.07);border:1px solid rgba(255,107,53,0.25);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem">
+            <p style="font-weight:700;margin-bottom:0.4rem">💾 Save games before deleting?</p>
+            <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.75rem">
+                Download all of <strong id="deleteTeacherName"></strong>'s games as a CSV file.
+            </p>
+            <button class="btn btn-secondary btn-sm" onclick="exportAndDelete()">⬇ Download CSV then Delete</button>
+        </div>
+        <div style="display:flex;gap:0.75rem">
+            <button class="btn btn-danger" style="flex:1" onclick="confirmDelete()">🗑 Delete Without Saving</button>
+            <button class="btn btn-secondary" style="flex:1" onclick="closeDeleteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let _deleteId = null, _deleteName = null;
+
+function switchTab(name) {
+    const tabs = ['stats','teachers','sounds','sessions','branding'];
+    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i] === name));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+}
+
+async function loadStats() {
+    try {
+        const d = await apiFetch('/accounts/api/admin-stats/');
+        document.getElementById('st-games').textContent    = d.totals.games;
+        document.getElementById('st-public').textContent   = d.totals.public_games;
+        document.getElementById('st-private').textContent  = d.totals.private_games;
+        document.getElementById('st-teachers').textContent = d.totals.teachers;
+        document.getElementById('st-pending').textContent  = d.totals.pending_approvals;
+        document.getElementById('st-sessions').textContent = d.totals.sessions;
+
+        // Popular games + hours
+        const mx = Math.max(1, ...d.popular_games.map(g => g.play_count));
+        document.getElementById('popularGames').innerHTML = d.popular_games.length
+            ? d.popular_games.map((g, i) => `
+                <div class="game-rank">
+                    <div class="rank-num">${i+1}</div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:700;font-size:0.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${g.title}</div>
+                        <div class="rank-bar"><div class="rank-bar-fill" style="width:${(g.play_count/mx)*100}%"></div></div>
+                        <div class="rank-meta">@${g.owner__username} · ${g.total_hours}h total played</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;min-width:40px">
+                        <div style="font-family:var(--font-display);font-size:1.2rem;color:var(--accent)">${g.play_count}</div>
+                        <div style="font-size:0.7rem;color:var(--text-muted)">plays</div>
+                    </div>
+                </div>`).join('')
+            : '<div style="color:var(--text-muted);font-size:0.9rem">No games played yet</div>';
+
+        document.getElementById('activityBody').innerHTML = d.user_activity.length
+            ? d.user_activity.map(u => `
+                <tr>
+                    <td><strong>${(u.first_name||'') + ' ' + (u.last_name||'') || u.username}</strong><br>
+                        <span style="color:var(--text-muted);font-size:0.75rem">@${u.username}</span></td>
+                    <td style="color:var(--teal);font-weight:700">${u.public_games}</td>
+                    <td style="color:var(--text-muted);font-weight:700">${u.private_games}</td>
+                    <td style="font-family:var(--font-display);font-size:1.1rem;color:var(--accent)">${u.session_count}</td>
+                    <td>${u.is_approved
+                        ? '<span class="badge badge-public">Active</span>'
+                        : '<span class="badge badge-pending">Pending</span>'}</td>
+                </tr>`).join('')
+            : '<tr><td colspan="5" style="color:var(--text-muted)">No activity yet</td></tr>';
+
+        document.getElementById('sessionsBody').innerHTML = d.recent_sessions.length
+            ? d.recent_sessions.map(s => {
+                const st = new Date(s.created_at);
+                const dur = s.ended_at
+                    ? (() => { const m = Math.round((new Date(s.ended_at)-st)/60000); return m>=60?(m/60).toFixed(1)+'h':m+' min'; })()
+                    : s.status==='active' ? '▶ Live' : '—';
+                const badge = {active:'<span class="badge badge-public">▶ Live</span>',finished:'<span class="badge badge-private">Done</span>',waiting:'<span class="badge badge-pending">Waiting</span>'}[s.status]||s.status;
+                return `<tr><td style="color:var(--text-muted)">#${s.id}</td><td><strong>${s.game__title}</strong></td><td style="color:var(--text-muted)">@${s.host__username}</td><td>${badge}</td><td style="color:var(--text-muted);font-size:0.8rem">${st.toLocaleString()}</td><td style="color:var(--text-muted)">${dur}</td></tr>`;
+              }).join('')
+            : '<tr><td colspan="6" style="color:var(--text-muted)">No sessions in last 7 days</td></tr>';
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+async function loadTeachers() {
+    try {
+        const teachers = await apiFetch('/accounts/api/teachers/');
+        const pending = teachers.filter(t => !t.is_approved).length;
+        const badge = document.getElementById('pendingBadge');
+        badge.textContent = pending ? pending + ' pending' : '';
+        badge.style.display = pending ? '' : 'none';
+
+        document.getElementById('teacherGrid').innerHTML = teachers.length
+            ? teachers.map(t => `
+                <div class="teacher-card ${t.is_approved?'':'pending'}" id="tc-${t.id}">
+                    <div style="display:flex;align-items:center;gap:0.75rem">
+                        <div class="avatar">${(t.first_name||t.username)[0].toUpperCase()}</div>
+                        <div class="teacher-info">
+                            <h3>${t.first_name||''} ${t.last_name||t.username}</h3>
+                            <div class="meta">@${t.username} · ${t.email}${t.school?'<br>🏫 '+t.school:''}</div>
+                        </div>
+                    </div>
+                    <div class="pill-row" id="pills-${t.id}">
+                        <span class="pill pill-sessions" style="opacity:0.5">loading…</span>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+                        ${t.is_approved
+                            ? `<span class="badge badge-public">✓ Approved</span>
+                               <button class="btn btn-secondary btn-sm" onclick="toggleApproval(${t.id})">Revoke</button>`
+                            : `<span class="badge badge-pending">⏳ Pending</span>
+                               <button class="btn btn-teal btn-sm" onclick="toggleApproval(${t.id})">✓ Approve</button>`}
+                        <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${t.id},'${(t.username||'').replace(/'/g,"\\'")}')">🗑 Delete</button>
+                    </div>
+                </div>`).join('')
+            : '<div style="color:var(--text-muted);grid-column:1/-1;padding:2rem;text-align:center">No teachers yet.</div>';
+
+        // Populate per-teacher game stats
+        const stats = await apiFetch('/accounts/api/admin-stats/');
+        stats.user_activity.forEach(u => {
+            const el = document.getElementById('pills-' + u.id);
+            if (el) el.innerHTML =
+                `<span class="pill pill-public">🌍 ${u.public_games}</span>
+                 <span class="pill pill-private">🔒 ${u.private_games}</span>
+                 <span class="pill pill-sessions">▶ ${u.session_count} sessions</span>`;
+        });
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+async function toggleApproval(id) {
+    try {
+        const res = await apiFetch(`/accounts/api/teachers/${id}/approve/`, {method:'POST'});
+        showToast(res.is_approved ? t('adm_approved_ok') : t('adm_revoked'));
+        loadTeachers(); loadStats();
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+function openDeleteModal(id, username) {
+    _deleteId = id; _deleteName = username;
+    document.getElementById('deleteModalMsg').textContent =
+        `Permanently delete teacher @${username} and all their account data.`;
+    document.getElementById('deleteTeacherName').textContent = '@' + username;
+    document.getElementById('deleteModal').classList.remove('hidden');
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.add('hidden');
+    _deleteId = null; _deleteName = null;
+}
+async function exportAndDelete() {
+    if (!_deleteId) return;
+    const a = document.createElement('a');
+    a.href = `/accounts/api/teachers/${_deleteId}/export-csv/`;
+    a.download = `${_deleteName}_games.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(confirmDelete, 1200);
+}
+async function confirmDelete() {
+    if (!_deleteId) return;
+    try {
+        await apiFetch(`/accounts/api/teachers/${_deleteId}/`, {method:'DELETE'});
+        showToast(`@${_deleteName} deleted`);
+        closeDeleteModal(); loadTeachers(); loadStats();
+    } catch(e) { showToast(e.message,'error'); closeDeleteModal(); }
+}
+document.getElementById('deleteModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
+});
+
+async function loadSoundSettings() {
+    try {
+        const s = await apiFetch('/accounts/api/sound-settings/');
+        document.getElementById('snd-correct').checked = s.correct_sound_enabled;
+        document.getElementById('snd-wrong').checked   = s.wrong_sound_enabled;
+        document.getElementById('snd-fanfare').checked = s.winner_fanfare_enabled;
+        document.getElementById('snd-tile').checked    = s.tile_click_enabled;
+        document.getElementById('snd-powerup').checked = s.powerup_sound_enabled;
+        const vol = Math.round(s.master_volume*100);
+        document.getElementById('snd-volume').value = vol;
+        document.getElementById('volumeLabel').textContent = vol+'%';
+    } catch(e) { showToast(e.message,'error'); }
+}
+async function saveSoundSettings() {
+    try {
+        await apiFetch('/accounts/api/sound-settings/', {method:'POST', body: JSON.stringify({
+            correct_sound_enabled: document.getElementById('snd-correct').checked,
+            wrong_sound_enabled:   document.getElementById('snd-wrong').checked,
+            winner_fanfare_enabled:document.getElementById('snd-fanfare').checked,
+            tile_click_enabled:    document.getElementById('snd-tile').checked,
+            powerup_sound_enabled: document.getElementById('snd-powerup').checked,
+            master_volume: parseInt(document.getElementById('snd-volume').value)/100,
+        })});
+        showToast(t('adm_saved'));
+    } catch(e) { showToast(e.message,'error'); }
+}
+document.getElementById('snd-volume').addEventListener('input', e => {
+    document.getElementById('volumeLabel').textContent = e.target.value+'%';
+});
+
+// Branding
+async function loadBrandingSettings() {
+    try {
+        const s = await apiFetch('/accounts/api/site-settings/');
+        document.getElementById(s.logo_type==='image'?'logoTypeImage':'logoTypeText').checked = true;
+        document.getElementById('logoText').value = s.logo_text||'EdexFun';
+        document.getElementById('logoImageUrl').value = s.logo_image_url||'';
+        toggleBrandSections(s.logo_type);
+        updateBrandPreview();
+    } catch(e) {}
+}
+function toggleBrandSections(type) {
+    document.getElementById('brandTextSection').style.display  = type==='text'  ? '' : 'none';
+    document.getElementById('brandImageSection').style.display = type==='image' ? '' : 'none';
+}
+document.querySelectorAll('input[name="logoType"]').forEach(r => r.addEventListener('change', () => {
+    toggleBrandSections(r.value); updateBrandPreview();
+}));
+function updateBrandPreview() {
+    const type = document.querySelector('input[name="logoType"]:checked')?.value||'text';
+    const p = document.getElementById('brandPreview');
+    if (type==='image') {
+        const url = document.getElementById('logoImageUrl').value.trim();
+        p.innerHTML = url ? `<img src="${url}" alt="logo" style="height:36px;object-fit:contain;vertical-align:middle">` : '<span style="color:var(--text-muted);font-size:0.9rem">Enter URL to preview</span>';
+    } else {
+        const txt = document.getElementById('logoText').value.trim()||'EdexFun';
+        const mid = Math.ceil(txt.length/2);
+        p.innerHTML = txt.slice(0,mid)+'<span>'+txt.slice(mid)+'</span>';
+    }
+}
+async function saveBranding() {
+    const type = document.querySelector('input[name="logoType"]:checked')?.value||'text';
+    try {
+        await apiFetch('/accounts/api/site-settings/', {method:'POST', body: JSON.stringify({
+            logo_type:      type,
+            logo_text:      document.getElementById('logoText').value.trim(),
+            logo_image_url: document.getElementById('logoImageUrl').value.trim(),
+        })});
+        showToast('Branding saved!');
+        const logo = document.getElementById('siteLogo');
+        if (logo) {
+            if (type==='image') {
+                logo.innerHTML = `<img src="${document.getElementById('logoImageUrl').value.trim()}" alt="logo" style="height:36px;object-fit:contain;vertical-align:middle">`;
+            } else {
+                const txt = document.getElementById('logoText').value.trim()||'EdexFun';
+                const mid = Math.ceil(txt.length/2);
+                logo.innerHTML = txt.slice(0,mid)+'<span>'+txt.slice(mid)+'</span>';
+            }
+        }
+    } catch(e) { showToast(e.message,'error'); }
+}
+
+loadStats(); loadTeachers(); loadSoundSettings(); loadBrandingSettings();
+
+function onLangChange() { loadStats(); loadTeachers(); loadSoundSettings(); }
+</script>
+{% endblock %}

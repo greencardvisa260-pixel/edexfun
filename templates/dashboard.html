@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – EdexFun{% endblock %}
+
+{% block extra_styles %}
+.hero {
+    padding: 2.5rem 0 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+}
+.hero h1 { font-family: var(--font-display); font-size: 2.2rem; line-height: 1.1; }
+.hero h1 span { color: var(--accent); }
+.hero p { color: var(--text-muted); margin-top: 0.5rem; font-weight: 600; }
+
+.section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+.section-header h2 { font-family: var(--font-display); font-size: 1.4rem; }
+
+.games-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1rem; margin-bottom: 3rem;
+}
+.game-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0;
+    transition: all 0.2s; position: relative; overflow: hidden;
+}
+.game-card-body {
+    padding: 1.25rem 1.5rem 1.5rem;
+}
+.game-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--yellow));
+    opacity: 0; transition: opacity 0.2s; z-index: 1;
+}
+.game-card:hover { border-color: rgba(255,107,53,0.3); transform: translateY(-2px); }
+.game-card:hover::before { opacity: 1; }
+.game-card h3 { font-family: var(--font-display); font-size: 1.85rem; margin-bottom: 0.4rem; text-align: center; line-height: 1.2; }
+.game-card-cover {
+    width: 100%; aspect-ratio: 16 / 7;
+    object-fit: cover; display: block;
+    border-radius: 0;
+}
+.game-card-cover-placeholder {
+    width: 100%; aspect-ratio: 16 / 7;
+    background: linear-gradient(135deg, rgba(155,93,229,0.22), rgba(255,107,53,0.15));
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted); font-size: 3rem;
+}
+.game-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; margin-top: 0.5rem; }
+.game-meta span { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.game-desc { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1rem; line-height: 1.5; }
+.game-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.grid-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: rgba(76,201,240,0.15); color: var(--blue);
+    padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700;
+}
+.empty-state {
+    text-align: center; padding: 3rem 2rem;
+    background: var(--surface); border: 1px dashed var(--border);
+    border-radius: var(--radius); color: var(--text-muted);
+}
+.empty-state .icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-state h3 { font-family: var(--font-display); font-size: 1.4rem; color: var(--text); margin-bottom: 0.5rem; }
+
+.stats-row { display: flex; gap: 1rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.stat-card {
+    flex: 1; min-width: 140px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem 1.5rem;
+}
+.stat-card .val { font-family: var(--font-display); font-size: 2rem; color: var(--accent); }
+.stat-card .lbl { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.25rem; }
+.stat-card.warn .val { color: var(--yellow); }
+.stat-card.good .val { color: var(--teal); }
+
+.search-bar { display: flex; gap: 0.75rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.search-bar input {
+    flex: 1; min-width: 200px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.65rem 1rem; color: var(--text);
+    font-family: var(--font-body); font-size: 0.95rem;
+}
+.search-bar input:focus { outline: none; border-color: var(--accent); }
+
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="hero">
+        <div>
+            <h1><span data-i18n="dash_welcome">Welcome back</span>, <span>{{ user.first_name|default:user.username }}</span>! 🎮</h1>
+            <p><span data-i18n='dash_subtitle'>Ready to EdexFun your students today?</span></p>
+        </div>
+    </div>
+
+
+
+    <!-- Regular teacher stats (visible to all) -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="val">{{ my_games|length }}</div>
+            <div class="lbl">{% if user.role == 'admin' %}All Games{% else %}My Games{% endif %}</div>
+        </div>
+        <div class="stat-card">
+            <div class="val">{{ public_games|length }}</div>
+            <div class="lbl">Public Games</div>
+        </div>
+        <div class="stat-card">
+            <div class="val">3</div>
+            <div class="lbl">Question Types</div>
+        </div>
+        <div class="stat-card">
+            <div class="val">4</div>
+            <div class="lbl">Max Teams</div>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="search-bar">
+        <input type="text" id="searchInput" data-i18n-ph="dash_search_ph" placeholder="🔍  Search games by title...">
+        <button class="btn btn-secondary" onclick="searchGames()"data-i18n="dash_search_btn">Search</button>
+    </div>
+
+    <!-- My / All Games -->
+    <div class="section-header">
+        <h2>{% if user.role == 'admin' %}<span data-i18n='dash_all_games'>🎲 All Games</span>{% else %}<span data-i18n='dash_my_games'>🎲 My Games</span>{% endif %}</h2>
+        <a href="/game/new/" class="btn btn-teal btn-sm" data-i18n="dash_new_game_btn">+ New Game</a>
+    </div>
+    <div class="games-grid" id="myGamesGrid">
+        {% for game in my_games %}
+        <div class="game-card" data-id="{{ game.id }}">
+            {% if game.cover_image_url %}
+            <img class="game-card-cover" src="{{ game.cover_image_url }}" alt="{{ game.title }}" loading="lazy">
+            {% else %}
+            <div class="game-card-cover-placeholder">🎯</div>
+            {% endif %}
+            <div class="game-card-body">
+            <h3>{{ game.title }}</h3>
+            <div class="game-meta">
+                <span class="badge {% if game.visibility == 'public' %}badge-public{% else %}badge-private{% endif %}">
+                    {{ game.visibility }}
+                </span>
+                <span class="grid-badge">⊞ {{ game.grid_size }}×{{ game.grid_size }}</span>
+                {% if game.subject %}<span>📚 {{ game.subject }}</span>{% endif %}
+                <span>{{ game.question_count }} questions</span>
+                {% if user.role == 'admin' %}<span style="color:var(--text-muted)">by {{ game.owner.username }}</span>{% endif %}
+            </div>
+            {% if game.description %}<p class="game-desc">{{ game.description|truncatechars:80 }}</p>{% endif %}
+            <div class="game-actions">
+                <a href="/game/{{ game.id }}/play/" class="btn btn-teal btn-sm" data-i18n="dash_play">▶ Play</a>
+                <a href="/game/{{ game.id }}/edit/" class="btn btn-secondary btn-sm" data-i18n="dash_edit">✏ Edit</a>
+                <button class="btn btn-danger btn-sm" onclick="deleteGame({{ game.id }}, this)">🗑</button>
+            </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state" style="grid-column:1/-1">
+            <div class="icon">🎯</div>
+            <h3>No games yet!</h3>
+            <p>Create your first game to get started.</p>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Public Games -->
+    {% if public_games %}
+    <div class="section-header">
+        <h2data-i18n="dash_public_games">🌍 Public Games from Other Teachers</h2>
+    </div>
+    <div class="games-grid" id="publicGamesGrid">
+        {% for game in public_games %}
+        <div class="game-card">
+            {% if game.cover_image_url %}
+            <img class="game-card-cover" src="{{ game.cover_image_url }}" alt="{{ game.title }}" loading="lazy">
+            {% else %}
+            <div class="game-card-cover-placeholder">🌍</div>
+            {% endif %}
+            <div class="game-card-body">
+            <h3>{{ game.title }}</h3>
+            <div class="game-meta">
+                <span class="badge badge-public">public</span>
+                <span class="grid-badge">⊞ {{ game.grid_size }}×{{ game.grid_size }}</span>
+                {% if game.subject %}<span>📚 {{ game.subject }}</span>{% endif %}
+                <span>by {{ game.owner.get_full_name|default:game.owner.username }}</span>
+            </div>
+            {% if game.description %}<p class="game-desc">{{ game.description|truncatechars:80 }}</p>{% endif %}
+            <div class="game-actions">
+                <a href="/game/{{ game.id }}/play/" class="btn btn-teal btn-sm" data-i18n="dash_play">▶ Play</a>
+            </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function deleteGame(id, btn) {
+    if (!confirm('Delete this game? This cannot be undone.')) return;
+    try {
+        await apiFetch(`/api/games/${id}/`, { method: 'DELETE' });
+        btn.closest('.game-card').remove();
+        showToast('Game deleted');
+    } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function searchGames() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) return;
+    try {
+        const data = await apiFetch(`/api/games/?search=${encodeURIComponent(q)}`);
+        const grid = document.getElementById('myGamesGrid');
+        // API returns a plain array (no pagination wrapper)
+        const results = Array.isArray(data) ? data : (data.results || []);
+        if (results.length === 0) {
+            grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><h3>No results found</h3></div>';
+            return;
+        }
+        grid.innerHTML = results.map(g => `
+            <div class="game-card">
+                <div class="game-card-cover-placeholder">🔍</div>
+                <div class="game-card-body">
+                    <h3>${g.title}</h3>
+                    <div class="game-meta">
+                        <span class="badge badge-${g.visibility}">${g.visibility}</span>
+                        <span class="grid-badge">⊞ ${g.grid_size}×${g.grid_size}</span>
+                        <span>${g.question_count} questions</span>
+                        ${g.owner_name ? `<span style="color:var(--text-muted)">by ${g.owner_name}</span>` : ''}
+                    </div>
+                    <div class="game-actions">
+                        <a href="/game/${g.id}/play/" class="btn btn-teal btn-sm">▶ Play</a>
+                        <a href="/game/${g.id}/edit/" class="btn btn-secondary btn-sm">✏ Edit</a>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) { showToast(e.message, 'error'); }
+}
+document.getElementById('searchInput').addEventListener('keydown', e => { if(e.key === 'Enter') searchGames(); });
+
+function onLangChange(lang) {
+    // Update search placeholder dynamically
+    const si = document.getElementById('searchInput');
+    if (si) si.placeholder = t('dash_search_ph');
+}
+
+</script>
+{% endblock %}
